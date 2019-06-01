@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Project</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/Fevicon.png') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/bootstrap/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/themify-icons/themify-icons.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/linericon/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/owl-carousel/owl.theme.default.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/owl-carousel/owl.carousel.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <!--===========================CSS File for TABLE=====================================-->
+    <link rel="stylesheet" href="{{ url_for('static', filename='addcss/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='addcss/util.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='addcss/popup.css') }}">
+    <script src="{{ url_for('static', filename='addjs/popup_jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='addjs/popup.js') }}"></script>
+    {% include 'head.html' %}
+    <!-- =============================================================================================== -->
+</head>
+
+
+<!--================ Offer section start =================-->
+<section class="section-margin">
+    <div class="hover_bkgr_fricc">
+        <span class="helper"></span>
+        <div>
+            <div class="popupCloseButton">x</div>
+            <br>
+            <h6>Your image is being predicted!<br />
+            <br>Please go to the project status page to see prediction result!</h6>
+        </div>
+    </div>
+    <div class="container">
+        <form method="POST" enctype="multipart/form-data">
+            <h2 class="section-intro__title">Predict New Picture's Label for Project {{ projnm }}</h2>
+            <p class="section-intro__subtitle">Upload images to be predicted below</p>
+            <p class="section-intro__subtitle">
+                <div class="section-padding--small2 bg-magnolia" id="create project">
+                    {% extends "flash.html" %}
+                    {% block body %}
+                    <center>
+                        {{ form.csrf_token }}
+                        <br><!--  render the form's CSRF field like normal. -->
+                        {{ form.file_selector(class="button button-contactForm") }}
+                        <br />
+                        <br>
+                        <!-- {{ form.submit(class="button button-light", onclick="popupClickButton()") }} -->
+                        {{ form.submit(class="button button-contactForm") }}
+                        <br>
+                        <br />
+                        <button type="button" class="button button-light">
+                            <a href="#" class="trigger_popup_fricc" type="submit">Predict</a></button>
+                        <!-- <button type="submit" class="button button-light trigger_popup_fricc">Predict</button> -->
+
+                        <br>
+                        <br>
+                        <div class="form-group text-center text-md-right mt-3">
+                        <button type="submit" class="button button-light">
+                            <a href="{{ url_for('status', projid=projid, project_predictions=project_predictions) }}">Go to Status Page</a></button>
+                        <br />
+                        <br>
+                        <button type="submit" class="button button-light">
+                            <a href="{{ url_for('projects') }}">Back to Project List Page</a></button>
+                        </div>
+                        <br />
+                        <br>
+                    </center>
+                    {% endblock %}
+                </div>
+            </p>
+        </form>
+    </div>
+</section>
+
+</html>

@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Project</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/Fevicon.png') }}">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendors/bootstrap/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendors/fontawesome/css/all.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendors/themify-icons/themify-icons.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendors/linericon/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendors/owl-carousel/owl.theme.default.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendors/owl-carousel/owl.carousel.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <!--===========================CSS File for TABLE=====================================-->
+  <link rel="stylesheet" href="{{ url_for('static', filename='addcss/main.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='addcss/util.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='addcss/labels.css') }}">
+  {% include 'head.html' %}
+  <!--===============================================================================================-->
+</head>
+
+<body>
+  <!--================Header Menu Area =================-->
+  {% with messages = get_flashed_messages() %}
+         {% if messages %}
+            <ul>
+               {% for message in messages %}
+               <li<{{ message }}</li>
+               {% endfor %}
+            </ul>
+         {% endif %}
+      {% endwith %}
+
+  <header class="header_area">
+    <div class="main_menu">
+      <nav class="navbar navbar-expand-lg navbar-light">
+        <div class="container box_1620">
+          <!-- Brand and toggle get grouped for better mobile display -->
+          <a class="navbar-brand logo_h" href="{{ url_for('index') }}"><img
+              src="{{ url_for('static', filename='img/logo.jpg') }}" alt=""></a>
+          <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent"
+            aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+            <span class="icon-bar"></span>
+          </button>
+          <!-- Collect the nav links, forms, and other content for toggling -->
+          <div class="collapse navbar-collapse offset" id="navbarSupportedContent">
+            <ul class="nav navbar-nav menu_nav justify-content-end">
+              <li class="nav-item submenu dropdown">
+                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" role="button" aria-haspopup="true"
+                  aria-expanded="false">Account</a>
+                <ul class="dropdown-menu">
+                  <li class="nav-item"><a class="nav-link" href="#project list">Project</a></li>
+                  <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Log out</a></li>
+                </ul>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </nav>
+    </div>
+  </header>
+  <!--================Header Menu Area =================-->
+
+  <!-- Head -->
+  <!--================ Head II start =================-->
+  <section class="hero-banner hero-banner--sm mb-30px">
+    <div class="container">
+      <div class="hero-banner--sm__content">
+        <h1>Projects</h1>
+        <nav aria-label="breadcrumb" class="banner-breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('index') }}">Home</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Projects</li>
+          </ol>
+        </nav>
+      </div>
+    </div>
+  </section>
+  <!--================ Head II end =================-->
+
+
+  <!--================ Offer section start =================-->
+  <section class="section-margin">
+    <div class="container">
+      <div class="section-intro pb-75px text-center">
+        <h2 class="section-intro__title">Your Projects</h2>
+        <p class="section-intro__subtitle">Select <strong>ADD PROJECT</strong> below to create your project!</p>
+
+        <div class="section-padding--small2 bg-magnolia" id="create project">
+          <div class="container">
+            <div class="row no-gutters align-items-center" style="text-align:center;">
+              <form action="" method="post" class="text-align:center;">
+                <br>
+
+                <input type="text" name="project_name" id="project_name" placeholder="Project Name"
+                  value="{{ request.form.project_name }}" size="40" required />
+                <br>
+                <input type="text" name="labels" id="labels" placeholder="Labels" value="{{ request.form.labels }}"
+                  size="40" required />
+
+                <br>
+                <p class="section-intro__subtitle">Define unique labels separated by comma please :)</p>
+                <br>
+                <button type="submit" class="button button-light">
+                  <a href="{{ url_for('projects') }}"><strong>Add Project</button></strong></a>
+                <br />
+                <br>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!--================ Offer section end =================-->
+
+    <!--================== limiter-tabel100 head ====================-->
+    <div class=" limiter" id="project list">
+      <div class="container-table100">
+        <div class="wrap-table100">
+          <div class="table100 ver1 m-b-110">
+            <div class="table100-head">
+              <table>
+                <thead>
+                  <tr class="row100 head">
+                    <!-- The width of the table could be changed -->
+                    <th class="cell100 column1">Project Name</th>
+                    <th class="cell100 column2">Upload Data</th>
+                    <th class="cell100 column3">Model Action</th>
+{#                    <th class="cell100 column4">Project Owner</th>#}
+                  </tr>
+                </thead>
+              </table>
+            </div>
+            <!--================== Table content =================-->
+            <div class="table100-body js-pscroll">
+              <table>
+                <tbody>
+                  <form action="/project" method="get">
+                    {% for proj in projects %}
+                    <tr class="row100 body">
+                      <td class="cell100 column1">{{ proj.project_name }}</td>
+                      <!-- upload by label -->
+                      <td class="cell100 column2">
+                        <div class="dropdown">
+                          <button class="dropbtn" type="button">Choose label</button>
+                          <div class="dropdown-content">
+                        {% for lab in proj_labs[proj.project_id] %}
+                            <a href="{{ url_for('upload', labid = lab.label_id ) }}">{{ lab.label_name }}</a>
+                        {% endfor %}
+                          </div>
+                        </div>
+                      </td>
+                      <!-- train -->
+                      <td class="cell100 column3">
+                          <a class="button button-light" href="{{ url_for('training', projid = proj.project_id) }}" onclick="gtag('event', 'click', {'event_category' : 'training',
+                              'event_label' : 'training_model', 'value' : 10 });">Train</a>
+                          <a class="button button-light" href="{{ url_for('predict', projid = proj.project_id) }}" onclick="gtag('event', 'click', {'event_category' : 'predicting',
+                              'event_label' : 'predictive_model', 'value' : 10 });">Predict</a>
+                          <a class="button button-light" href="{{ url_for('status', projid = proj.project_id) }}" onclick="gtag('event', 'click', {'event_category' : 'results',
+                              'event_label' : 'predict_results', 'value' : 10 });">Status</a>
+                      </td>
+{#                      <td class="cell100 column4">{{ proj_owners[proj.project_id] }}</td>#}
+                    </tr>
+                    {% endfor %}
+                  </form>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!--===============================================================================================-->
+
+    
+
+<!-- ================ start footer Area ================= -->
+<footer class="footer-area section-gap">
+  <div class="container">
+    <div class="row">
+      <div class="col-xl-2 col-sm-6 mb-4 mb-xl-0 single-footer-widget">
+        <h4>Top Products</h4>
+        <ul>
+          <li><a href="#">Managed Website</a></li>
+          <li><a href="#">Manage Reputation</a></li>
+          <li><a href="#">Power Tools</a></li>
+          <li><a href="#">Marketing Service</a></li>
+        </ul>
+      </div>
+      <div class="col-xl-2 col-sm-6 mb-4 mb-xl-0 single-footer-widget">
+        <h4>Quick Links</h4>
+        <ul>
+          <li><a href="#">Jobs</a></li>
+          <li><a href="#">Brand Assets</a></li>
+          <li><a href="#">Investor Relations</a></li>
+          <li><a href="#">Terms of Service</a></li>
+        </ul>
+      </div>
+      <div class="col-xl-2 col-sm-6 mb-4 mb-xl-0 single-footer-widget">
+        <h4>Features</h4>
+        <ul>
+          <li><a href="#">Jobs</a></li>
+          <li><a href="#">Brand Assets</a></li>
+          <li><a href="#">Investor Relations</a></li>
+          <li><a href="#">Terms of Service</a></li>
+        </ul>
+      </div>
+      <div class="col-xl-2 col-sm-6 mb-4 mb-xl-0 single-footer-widget">
+        <h4>Resources</h4>
+        <ul>
+          <li><a href="#">Guides</a></li>
+          <li><a href="#">Research</a></li>
+          <li><a href="#">Experts</a></li>
+          <li><a href="#">Agencies</a></li>
+        </ul>
+      </div>
+      <div class="col-xl-4 col-md-8 mb-4 mb-xl-0 single-footer-widget">
+        <h4>Newsletter</h4>
+        <p>You can trust us. we only send promo offers,</p>
+        <div class="form-wrap" id="mc_embed_signup">
+          <form target="_blank"
+            action="https://spondonit.us12.list-manage.com/subscribe/post?u=1462626880ade1ac87bd9c93a&amp;id=92a4423d01"
+            method="get" class="form-inline">
+            <input class="form-control" name="EMAIL" placeholder="Your Email Address" onfocus="this.placeholder = ''"
+              onblur="this.placeholder = 'Your Email Address '" required="" type="email">
+            <button class="click-btn btn btn-default">subscribe</button>
+            <div style="position: absolute; left: -5000px;">
+              <input name="b_36c4fd991d266f23781ded980_aefe40901a" tabindex="-1" value="" type="text">
+            </div>
+
+            <div class="info"></div>
+          </form>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom row align-items-center text-center text-lg-left">
+      <p class="footer-text m-0 col-lg-8 col-md-12">
+        <!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
+        Copyright &copy;
+        <script>document.write(new Date().getFullYear());</script> All rights reserved | This template is made with <i
+          class="fa fa-heart" aria-hidden="true"></i> by <a href="https://colorlib.com" target="_blank">Colorlib</a>
+        <!-- Link back to Colorlib can't be removed. Template is licensed under CC BY 3.0. -->
+      </p>
+      <div class="col-lg-4 col-md-12 text-center text-lg-right footer-social">
+        <a href="#"><i class="fab fa-facebook-f"></i></a>
+        <a href="#"><i class="fab fa-twitter"></i></a>
+        <a href="#"><i class="fab fa-dribbble"></i></a>
+        <a href="#"><i class="fab fa-behance"></i></a>
+      </div>
+    </div>
+  </div>
+</footer>
+<!-- ================ End footer Area ================= -->
+
+<script src="{{ url_for('static', filename='vendors/jquery/jquery-3.2.1.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/bootstrap/bootstrap.bundle.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendors/owl-carousel/owl.carousel.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/jquery.ajaxchimp.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/mail-script.js') }}"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+</body>
+
+</html>

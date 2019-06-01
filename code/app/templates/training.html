@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Project</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/Fevicon.png') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/bootstrap/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/themify-icons/themify-icons.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/linericon/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/owl-carousel/owl.theme.default.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/owl-carousel/owl.carousel.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <!--===========================CSS File for TABLE=====================================-->
+    <link rel="stylesheet" href="{{ url_for('static', filename='addcss/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='addcss/util.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='addcss/labels.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='addcss/popup.css') }}">
+
+    <script src="{{ url_for('static', filename='addjs/popup_jquery.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='addjs/popup.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='vendors/jquery/jquery-3.2.1.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendors/bootstrap/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendors/owl-carousel/owl.carousel.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jquery.ajaxchimp.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/mail-script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    {% include 'head.html' %}
+    <!--===============================================================================================-->
+</head>
+
+<body>
+    <!-- =======================Header Area ============================ -->
+    <header class="header_area">
+        <div class="main_menu">
+            <nav class="navbar navbar-expand-lg navbar-light">
+                <div class="container box_1620">
+                    <!-- Brand and toggle get grouped for better mobile display -->
+                    <a class="navbar-brand logo_h" href="{{ url_for('index') }}"><img
+                            src="{{ url_for('static', filename='img/logo.jpg') }}" alt=""></a>
+                    <button class="navbar-toggler" type="button" data-toggle="collapse"
+                        data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <!-- Collect the nav links, forms, and other content for toggling -->
+                    <div class="collapse navbar-collapse offset" id="navbarSupportedContent">
+                        <ul class="nav navbar-nav menu_nav justify-content-end">
+                            <li class="nav-item submenu dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" role="button"
+                                    aria-haspopup="true" aria-expanded="false">Account</a>
+                                <ul class="dropdown-menu">
+                                    <li class="nav-item"><a class="nav-link"
+                                            href="{{ url_for('projects') }}">Project</a></li>
+                                    <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Log out</a>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+    <section class="hero-banner hero-banner--sm mb-30px">
+        <div class="container">
+            <div class="hero-banner--sm__content">
+                <h1>Train your model!</h1>
+                <nav aria-label="breadcrumb" class="banner-breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item">{{ projnm }}</a></li>
+                        <li class="breadcrumb-item active" aria-current="page"><a href="#data">Data</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page"><a href="#train">Train</a></li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </section>
+    <!-- =======================Header Area End============================ -->
+    <!-- =======================Body Area ============================ -->
+
+    <section class="section-margin">
+        <div class="container">
+            <!-- =======================Table============================ -->
+            <div class="wrap-table100">
+                <div class="table100 ver1 m-b-110">
+                    <div class="table100-head js-pscroll">
+                        <table>
+                            <thead>
+                                <tr class="row100 head">
+                                    <th class="cell100 column1">
+                                        Label
+                                    </th>
+                                    <th class="cell100 column2">
+                                        Number of Images Uploaded
+                                    </th>
+                                </tr>
+                            </thead>
+                        </table>
+                    </div>
+                    <div class="table100-body js-pscroll">
+                        <table>
+                            <tbody>
+                                {% for lab_num in label_with_img_num %}
+                                <tr class="row100 body">
+                                    <td class="cell100 column1">
+                                        {{ lab_num[0] }}
+                                    </td>
+                                    <td class="cell100 column2">
+                                        {{ lab_num[1] }}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- =======================Table End============================ -->
+            <!-- =======================Train============================ -->
+
+            <div class="card card-feature text-center text-lg-center mb-4 mb-lg-0">
+                <form action="" method="GET">
+                    <button type="button" class="button button-light trigger_popup_fricc">
+                        Train
+                    </button>
+                </form>
+            </div>
+
+        </div>
+    </section>
+    <!-- =======================Body Area End============================ -->
+    <div class="hover_bkgr_fricc">
+        <span class="helper"></span>
+        <div>
+            <div class="popupCloseButton">x</div>
+            <br>
+            <h6>{{ message }}</h6>
+        </div>
+    </div>
+</body>
+
+</html>

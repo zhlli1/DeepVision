@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Project</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/Fevicon.png') }}">
+
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendors/bootstrap/bootstrap.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendors/fontawesome/css/all.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendors/themify-icons/themify-icons.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendors/linericon/style.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendors/owl-carousel/owl.theme.default.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='vendors/owl-carousel/owl.carousel.min.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <!--===========================CSS File for TABLE=====================================-->
+  <link rel="stylesheet" href="{{ url_for('static', filename='addcss/main.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='addcss/util.css') }}">
+  {% include 'head.html' %}
+  <!--===============================================================================================-->
+</head>
+
+<!--================ Offer section start =================-->
+<section class="section-margin">
+  <div class="container">
+    <div class="section-intro pb-75px text-center">
+      <h2 class="section-intro__title">Upload Data for Project {{ projnm }}</h2>
+      <p class="section-intro__subtitle">Label: {{ labelnm }}</p>
+
+      <p class="section-intro__subtitle">
+        <div class="section-padding--small2 bg-magnolia" id="create project">
+          <center>
+            <form method="POST" enctype="multipart/form-data">
+              {{ form.csrf_token }}
+              Images only
+              <br><!--  render the form's CSRF field like normal. -->
+              {{ form.file_selector(class="button button-contactForm") }} 
+              <br>
+              <br />
+              {{ form.submit(class="button button-contactForm") }}
+              <br>
+                {{ muploaded }} images out of {{ nfiles }} files selected uploaded successfully
+              <br>
+            </form>
+            <br>
+            <br />
+            <button type="submit" class="button button-light">
+              <a href="{{ url_for('projects') }}">Back to Project List Page </button></a>
+            <br>
+          </center>
+        </div>
+      </p>
+    </div>
+  </div>
+
+  <!--================ Offer section end =================-->
+</section>
+
+</html>

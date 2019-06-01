@@ -1,0 +1,236 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Requirements &#8212; DeepVision  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Tutorial" href="tutorial.html" />
+    <link rel="prev" title="Authors" href="authors.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="requirements">
+<h1>Requirements<a class="headerlink" href="#requirements" title="Permalink to this headline">¶</a></h1>
+<p>The deploy script assumes that your remote  machine is accessible through the port speciffied in <code class="docutils literal notranslate"><span class="pre">product-analytics-group-project-deepvision/code/.flaskenv</span></code>. It also assumes that the following packages have been previously installed.</p>
+<ul class="simple">
+<li>conda 4.6.8</li>
+<li>git version 2.19.1</li>
+</ul>
+<p>And the <code class="docutils literal notranslate"><span class="pre">git</span></code> credentials of the user that is specified via command line at deployment time are stored in the remote machine.</p>
+<p>The following packages are required (stated in <cite>environment.yml</cite>) as dependencies and will automatically be downloaded when running the deploy script:</p>
+<blockquote>
+<div><ul class="simple">
+<li>alabaster=0.7.12</li>
+<li>asn1crypto=0.24.0</li>
+<li>babel=2.6.0</li>
+<li>bcrypt=3.1.6</li>
+<li>boto3=1.9.111</li>
+<li>botocore=1.12.112</li>
+<li>ca-certificates=2019.1.23</li>
+<li>certifi=2019.3.9</li>
+<li>cffi=1.12.2</li>
+<li>chardet=3.0.4</li>
+<li>click=7.0</li>
+<li>cryptography=2.6.1</li>
+<li>docutils=0.14</li>
+<li>flask=1.0.2</li>
+<li>flask-login=0.4.1</li>
+<li>flask-sqlalchemy=2.3.2</li>
+<li>flask-wtf=0.14.2</li>
+<li>idna=2.8</li>
+<li>imagesize=1.1.0</li>
+<li>itsdangerous=1.1.0</li>
+<li>jinja2=2.10</li>
+<li>jmespath=0.9.4</li>
+<li>libedit=3.1.20181209</li>
+<li>libffi=3.2.1</li>
+<li>libsodium=1.0.16</li>
+<li>markupsafe=1.1.1</li>
+<li>ncurses=6.1</li>
+<li>openssl=1.1.1b</li>
+<li>packaging=19.0</li>
+<li>paramiko=2.4.2</li>
+<li>pip=19.0.3</li>
+<li>pyasn1=0.4.5</li>
+<li>pycodestyle=2.5.0</li>
+<li>pycparser=2.19</li>
+<li>pygments=2.3.1</li>
+<li>pynacl=1.3.0</li>
+<li>pyopenssl=19.0.0</li>
+<li>pyparsing=2.3.1</li>
+<li>pysocks=1.6.8</li>
+<li>python=3.7.1</li>
+<li>python-dateutil=2.8.0</li>
+<li>python-dotenv=0.10.1</li>
+<li>pytz=2018.9</li>
+<li>readline=7.0</li>
+<li>requests=2.21.0</li>
+<li>s3transfer=0.2.0</li>
+<li>selenium=3.141.0</li>
+<li>setuptools=40.8.0</li>
+<li>simplejson=3.16.0</li>
+<li>six=1.12.0</li>
+<li>snowballstemmer=1.2.1</li>
+<li>sphinx=1.8.5</li>
+<li>sphinxcontrib=1.0</li>
+<li>sphinxcontrib-websupport=1.1.0</li>
+<li>sqlalchemy=1.3.1</li>
+<li>sqlite=3.27.2</li>
+<li>tk=8.6.8</li>
+<li>urllib3=1.24.1</li>
+<li>werkzeug=0.14.1</li>
+<li>wheel=0.33.1</li>
+<li>wtforms=2.2.1</li>
+<li>xlrd=1.2.0</li>
+<li>xz=5.2.4</li>
+<li>zlib=1.2.11</li>
+</ul>
+</div></blockquote>
+<p>And the following are packages installed through <code class="docutils literal notranslate"><span class="pre">pip</span></code>:</p>
+<blockquote>
+<div><ul class="simple">
+<li>appnope==0.1.0</li>
+<li>attrs==19.1.0</li>
+<li>backcall==0.1.0</li>
+<li>bleach==3.1.0</li>
+<li>decorator==4.4.0</li>
+<li>defusedxml==0.5.0</li>
+<li>entrypoints==0.3</li>
+<li>gunicorn==19.9.0</li>
+<li>ipykernel==5.1.0</li>
+<li>ipython==7.4.0</li>
+<li>ipython-genutils==0.2.0</li>
+<li>ipywidgets==7.4.2</li>
+<li>jedi==0.13.3</li>
+<li>jsonschema==3.0.1</li>
+<li>jupyter==1.0.0</li>
+<li>jupyter-client==5.2.4</li>
+<li>jupyter-console==6.0.0</li>
+<li>jupyter-core==4.4.0</li>
+<li>mistune==0.8.4</li>
+<li>nbconvert==5.4.1</li>
+<li>nbformat==4.4.0</li>
+<li>notebook==5.7.6</li>
+<li>pandocfilters==1.4.2</li>
+<li>parso==0.3.4</li>
+<li>pexpect==4.6.0</li>
+<li>pickleshare==0.7.5</li>
+<li>prometheus-client==0.6.0</li>
+<li>prompt-toolkit==2.0.9</li>
+<li>ptyprocess==0.6.0</li>
+<li>pyrsistent==0.14.11</li>
+<li>pyzmq==18.0.1</li>
+<li>qtconsole==4.4.3</li>
+<li>send2trash==1.5.0</li>
+<li>terminado==0.8.1</li>
+<li>testpath==0.4.2</li>
+<li>tornado==6.0.1</li>
+<li>traitlets==4.3.2</li>
+<li>wcwidth==0.1.7</li>
+<li>webencodings==0.5.1</li>
+<li>widgetsnbextension==3.4.2</li>
+</ul>
+</div></blockquote>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">DeepVision</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="authors.html">Authors</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="apiReference.html">Code Documentation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="authors.html" title="previous chapter">Authors</a></li>
+      <li>Next: <a href="tutorial.html" title="next chapter">Tutorial</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Miguel Romero, Robert Sandor, Hai Vu Le, Meng-Ting Chang, Zhi Li, Liying Li, Wenkun Xiao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/requirements.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

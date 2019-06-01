@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Project</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/Fevicon.png') }}">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/bootstrap/bootstrap.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/fontawesome/css/all.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/themify-icons/themify-icons.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/linericon/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/owl-carousel/owl.theme.default.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendors/owl-carousel/owl.carousel.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+    <!--===========================CSS File for TABLE=====================================-->
+    <link rel="stylesheet" href="{{ url_for('static', filename='addcss/main.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='addcss/util.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='addcss/labels.css') }}">
+
+    <script>
+        $('.js-pscroll').each(function () {
+            var ps = new PerfectScrollbar(this);
+
+            $(window).on('resize', function () {
+                ps.update();
+            })
+        });
+    </script>
+    <!--===============================================================================================-->
+    <script src="{{ url_for('static', filename='addjs/main_table.js') }}"></script>
+
+    <script src="{{ url_for('static', filename='vendors/jquery/jquery-3.2.1.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendors/bootstrap/bootstrap.bundle.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='vendors/owl-carousel/owl.carousel.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/jquery.ajaxchimp.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/mail-script.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+
+    {% include 'head.html' %}
+    <!--===============================================================================================-->
+</head>
+
+<body>
+    <!--================Header Menu Area =================-->
+    <header class="header_area">
+        <div class="main_menu">
+            <nav class="navbar navbar-expand-lg navbar-light">
+                <div class="container box_1620">
+                    <!-- Brand and toggle get grouped for better mobile display -->
+                    <a class="navbar-brand logo_h" href="{{ url_for('index') }}"><img
+                            src="{{ url_for('static', filename='img/logo.jpg') }}" alt=""></a>
+                    <button class="navbar-toggler" type="button" data-toggle="collapse"
+                        data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
+                        aria-expanded="false" aria-label="Toggle navigation">
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                        <span class="icon-bar"></span>
+                    </button>
+                    <!-- Collect the nav links, forms, and other content for toggling -->
+                    <div class="collapse navbar-collapse offset" id="navbarSupportedContent">
+                        <ul class="nav navbar-nav menu_nav justify-content-end">
+                            <li class="nav-item submenu dropdown">
+                                <a href="#" class="nav-link dropdown-toggle" data-toggle="dropdown" role="button"
+                                    aria-haspopup="true" aria-expanded="false">Account</a>
+                                <ul class="dropdown-menu">
+                                    <li class="nav-item"><a class="nav-link"
+                                            href="{{ url_for('projects') }}">Project</a></li>
+                                    <li class="nav-item"><a class="nav-link" href="{{ url_for('logout') }}">Log out</a>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </nav>
+        </div>
+    </header>
+    <section class="hero-banner hero-banner--sm mb-30px">
+        <div class="container">
+            <div class="hero-banner--sm__content">
+                <h1>Project Status of project {{ projnm }} </h1>
+                <nav aria-label="breadcrumb" class="banner-breadcrumb">
+                    <ol class="breadcrumb">
+                        <li class="breadcrumb-item active" aria-current="page"><a href="#predictions">Prediction</a>
+                        </li>
+                        <li class="breadcrumb-item active" aria-current="page"><a href="#users">Users</a></li>
+                        <li class="breadcrumb-item active" aria-current="page"><a href="{{url_for('projects')}}">All Projects</a></li>
+                    </ol>
+                </nav>
+            </div>
+        </div>
+    </section>
+
+    <section class="section-margin">
+        <div class="container" id="predictions">
+            <div class="section-intro pb-75px text-center">
+                <h2 class="section-intro__title">Predictions for {{ projnm }}</h2>
+            </div>
+        </div>
+        <!--================== limiter-tabel100 head ====================-->
+        <div class=" limiter" id="prediction list">
+            <div class="container-table100">
+                <div class="wrap-table100">
+                    <div class="table100 ver1 m-b-110">
+                        <div class="table100-head">
+                            <table>
+                                <thead>
+                                    <tr class="row100 head">
+                                        <!-- The width of the table could be changed -->
+                                        <th class="cell100 column1">Image</th>
+                                        <th class="cell100 column2">Prediction Label</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                        <!--================== Table content =================-->
+                        <div class="table100-body js-pscroll">
+                            <table>
+                                <tbody>
+                                    {% for prediction in project_predictions %}
+                                    <tr class="row100 body">
+                                        <td class="cell100 column1"><span class = "image fit"><img src='https://s3-us-west-2.amazonaws.com/msds603-deep-vision/{{ prediction.path_to_img }}' width = "130" height ="135" alt = ""/></span></td>
+                                        <td class="cell100 column2">{{ prediction.label }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="form-group text-center text-md-center mt-3">
+                        <button type="submit" class="button button-light">
+                            <a href="{{ url_for('downloadpred', projid = projid) }}"><strong>Download All</strong></a></button>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="container" id="users">
+            <div class="section-intro pb-75px text-center">
+                <h2 class="section-intro__title">Current Users of {{ projnm }}</h2>
+            </div>
+            <div class="row">
+                <div class="col-lg-7">
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    <div class="card card-feature text-center text-lg-left mb-4 mb-lg-0">
+                                        <h3 class="card-feature__title">Project Owner:</h3>
+                                    </div>
+                                </div>
+                                <div class="col-lg-12 scrollable">
+                                    <div class="card card-feature text-center text-lg-center mb-4 mb-lg-0">
+                                        <br />
+                                        <h4>{{ proj_owner }}</h4>
+                                        <br />
+                                        <br />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="row">
+                                <div class="col-lg-12">
+                                    <div class="card card-feature text-center text-lg-left mb-4 mb-lg-0">
+                                        <!-- <div class="scrollable"> -->
+                                        <h3 class="card-feature__title">All project users: </h3>
+                                    </div>
+                                </div>
+                                <div class="col-lg-12 scrollable1">
+                                    <div class="card card-feature text-center text-lg-left mb-4 mb-lg-0">
+                                        {% for user in users %}
+                                        <p class="card-feature__subtitle">
+                                            {{ user }} &nbsp;&nbsp;&nbsp;&nbsp;
+                                        </p>
+                                        {% endfor %}
+                                        <!-- </div> -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-5">
+                    <div class="row">
+                        <div class="col-lg-12">
+                            <div class="card card-feature text-center text-lg-left mb-4 mb-lg-0">
+                                <h3 class="card-feature__title">Add new user for this project: </h3>
+                            </div>
+                        </div>
+                        <div class="col-lg-12 scrollable">
+                            <div class="card card-feature text-center text-lg-left mb-4 mb-lg-0">
+                                {% extends "flash.html" %}
+                                {% block body %}
+                                <form action="" class="form-contact contact_form" id="addUser" method="POST"
+                                    novalidate="novalidate">
+                                    <input type="text" name="username" id="username" placeholder="Username"
+                                        value="{{ request.form.username }}" size="45" required />
+                                    <div class="form-group text-center text-md-right mt-3">
+                                        <button type="submit" class="button button-contactForm">
+                                            <a href="{{ url_for('status', projid = projid) }}"><strong>Add
+                                                    User</strong></a></button>
+                                        <br />
+                                    </div>
+                                </form>
+                                {% endblock %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</body>
+
+</html>

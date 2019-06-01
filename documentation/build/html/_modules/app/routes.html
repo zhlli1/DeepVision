@@ -1,0 +1,1032 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>app.routes &#8212; DeepVision  documentation</title>
+    <link rel="stylesheet" href="../../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../../_static/jquery.js"></script>
+    <script type="text/javascript" src="../../_static/underscore.js"></script>
+    <script type="text/javascript" src="../../_static/doctools.js"></script>
+    <script type="text/javascript" src="../../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for app.routes</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">app</span> <span class="k">import</span> <span class="n">application</span><span class="p">,</span> <span class="n">classes</span><span class="p">,</span> <span class="n">db</span>
+
+<span class="kn">from</span> <span class="nn">flask</span> <span class="k">import</span> <span class="p">(</span><span class="n">render_template</span><span class="p">,</span>
+                   <span class="n">redirect</span><span class="p">,</span>
+                   <span class="n">url_for</span><span class="p">,</span>
+                   <span class="n">request</span><span class="p">,</span>
+                   <span class="n">flash</span><span class="p">,</span>
+                   <span class="n">jsonify</span><span class="p">)</span>
+
+<span class="kn">import</span> <span class="nn">json</span>
+<span class="kn">import</span> <span class="nn">boto3</span>
+<span class="kn">from</span> <span class="nn">flask_wtf.file</span> <span class="k">import</span> <span class="n">FileField</span><span class="p">,</span> <span class="n">FileRequired</span>
+<span class="kn">import</span> <span class="nn">matplotlib.image</span> <span class="k">as</span> <span class="nn">mpimg</span>
+<span class="kn">import</span> <span class="nn">tempfile</span>
+<span class="kn">from</span> <span class="nn">wtforms</span> <span class="k">import</span> <span class="n">SubmitField</span>
+<span class="kn">from</span> <span class="nn">werkzeug</span> <span class="k">import</span> <span class="n">secure_filename</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">import</span> <span class="nn">ml</span>
+
+<span class="c1"># for building forms</span>
+<span class="kn">from</span> <span class="nn">flask_wtf</span> <span class="k">import</span> <span class="n">FlaskForm</span>  <span class="c1"># RecaptchaField</span>
+<span class="kn">from</span> <span class="nn">wtforms</span> <span class="k">import</span> <span class="n">SubmitField</span><span class="p">,</span> <span class="n">MultipleFileField</span>
+<span class="kn">from</span> <span class="nn">wtforms</span> <span class="k">import</span> <span class="n">TextField</span><span class="p">,</span> <span class="n">PasswordField</span>
+<span class="kn">from</span> <span class="nn">wtforms.validators</span> <span class="k">import</span> <span class="n">DataRequired</span><span class="p">,</span> <span class="n">Email</span><span class="p">,</span> <span class="n">Length</span>
+
+<span class="c1"># for handling log-in, log-out states</span>
+<span class="kn">from</span> <span class="nn">werkzeug.security</span> <span class="k">import</span> <span class="n">check_password_hash</span>
+<span class="kn">from</span> <span class="nn">werkzeug.security</span> <span class="k">import</span> <span class="n">generate_password_hash</span>
+<span class="kn">from</span> <span class="nn">flask_login</span> <span class="k">import</span> <span class="n">current_user</span><span class="p">,</span> <span class="n">login_user</span><span class="p">,</span> <span class="n">login_required</span><span class="p">,</span> <span class="n">logout_user</span>
+
+<span class="c1"># for upload to s3</span>
+<span class="kn">from</span> <span class="nn">boto.s3.key</span> <span class="k">import</span> <span class="n">Key</span>
+<span class="kn">import</span> <span class="nn">boto</span>
+<span class="kn">from</span> <span class="nn">collections</span> <span class="k">import</span> <span class="n">Counter</span>
+<span class="kn">import</span> <span class="nn">time</span>
+<span class="kn">from</span> <span class="nn">threading</span> <span class="k">import</span> <span class="n">Thread</span> 
+<span class="c1"># for prediction</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">from</span> <span class="nn">ml</span> <span class="k">import</span> <span class="n">train_ml</span><span class="p">,</span> <span class="n">predict_ml</span><span class="p">,</span> <span class="n">send_notification</span>
+<span class="c1"># for download</span>
+<span class="kn">import</span> <span class="nn">shutil</span>
+<span class="kn">from</span> <span class="nn">flask</span> <span class="k">import</span> <span class="n">send_file</span>
+
+
+<span class="n">CLIENT</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s1">&#39;s3&#39;</span><span class="p">,</span> <span class="n">aws_access_key_id</span><span class="o">=</span><span class="s1">&#39;AKIAIQRI4EE5ENXNW6LQ&#39;</span><span class="p">,</span>
+                      <span class="n">aws_secret_access_key</span><span class="o">=</span><span class="s1">&#39;2gduLL4umVC9j7XXc2L1N8DfUVQQKcFmnezTYF8O&#39;</span><span class="p">)</span>
+
+<span class="n">BUCKET_NAME</span> <span class="o">=</span> <span class="s1">&#39;msds603-deep-vision&#39;</span>
+<span class="n">MIN_IMG_LBL</span> <span class="o">=</span> <span class="mi">5</span>
+
+<span class="c1"># Web app backend ##############</span>
+
+<span class="c1"># S3 helper functions</span>
+<div class="viewcode-block" id="get_deepVision_bucket"><a class="viewcode-back" href="../../apiReference.html#app.routes.get_deepVision_bucket">[docs]</a><span class="k">def</span> <span class="nf">get_deepVision_bucket</span><span class="p">():</span>
+    <span class="n">bucket_name</span> <span class="o">=</span> <span class="s1">&#39;msds603-deep-vision&#39;</span>
+    <span class="n">s3_connection</span> <span class="o">=</span> <span class="n">boto</span><span class="o">.</span><span class="n">connect_s3</span><span class="p">(</span>
+        <span class="n">aws_access_key_id</span><span class="o">=</span><span class="s1">&#39;AKIAIQRI4EE5ENXNW6LQ&#39;</span><span class="p">,</span>
+        <span class="n">aws_secret_access_key</span><span class="o">=</span><span class="s1">&#39;2gduLL4umVC9j7XXc2L1N8DfUVQQKcFmnezTYF8O&#39;</span><span class="p">)</span>
+    <span class="c1"># to be replaced: os.environ[&#39;AWS_ACCESS_KEY_ID&#39;], [&#39;AWS_SECRET_ACCESS_KEY&#39;]</span>
+    <span class="c1"># rob&#39;s key store in .sh file, paramiko to run</span>
+    <span class="k">return</span> <span class="n">s3_connection</span><span class="o">.</span><span class="n">get_bucket</span><span class="p">(</span><span class="n">bucket_name</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="index"><a class="viewcode-back" href="../../apiReference.html#app.routes.index">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/home&#39;</span><span class="p">)</span>
+<span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/index&#39;</span><span class="p">)</span>
+<span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">index</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Route to the home page which can be accessed at / or /index or /home.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s2">&quot;index.html&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="blog"><a class="viewcode-back" href="../../apiReference.html#app.routes.blog">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/blog&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">blog</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Route to the blog page.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s2">&quot;blog.html&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="blog_details"><a class="viewcode-back" href="../../apiReference.html#app.routes.blog_details">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/blog-details&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">blog_details</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Route to the blog details page.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s2">&quot;blog-details.html&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="contact"><a class="viewcode-back" href="../../apiReference.html#app.routes.contact">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/contact&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">contact</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Route to the statis page about contact information.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s2">&quot;contact.html&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="feature"><a class="viewcode-back" href="../../apiReference.html#app.routes.feature">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/feature&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">feature</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Route to the statis page about service information.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s2">&quot;feature.html&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="pricing"><a class="viewcode-back" href="../../apiReference.html#app.routes.pricing">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/pricing&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">pricing</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;Route to the statis page listing pricing information.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s2">&quot;pricing.html&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="register"><a class="viewcode-back" href="../../apiReference.html#app.routes.register">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/register&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">register</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function uses method request to take user-input data from a regular</span>
+<span class="sd">    html form (not a FlaskForm object) then inserts the information of a</span>
+<span class="sd">    new user into the database using SQLAlchemy.</span>
+<span class="sd">    If data is valid, dedirect to log in page.</span>
+<span class="sd">    Oherwise, render the sign up form again.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;POST&quot;</span><span class="p">:</span>
+        <span class="n">username</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;username&#39;</span><span class="p">]</span>
+        <span class="n">companyname</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;companyname&#39;</span><span class="p">]</span>
+        <span class="n">email</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;email&#39;</span><span class="p">]</span>
+        <span class="n">password</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;password&#39;</span><span class="p">]</span>
+
+        <span class="n">user_count</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> \
+            <span class="o">+</span> <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="n">email</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">user_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">user</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">email</span><span class="p">,</span> <span class="n">companyname</span><span class="p">,</span> <span class="n">password</span><span class="p">)</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+            <span class="c1"># flash(&#39;successfully logged in.&#39;)</span>
+            <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s1">&#39;signin&#39;</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">flash</span><span class="p">(</span><span class="s1">&#39;Username or email already exists.&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s2">&quot;signup.html&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="signin"><a class="viewcode-back" href="../../apiReference.html#app.routes.signin">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/signin&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">signin</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function uses method request to take user-input data from a regular</span>
+<span class="sd">    html form (not a FlaskForm object) then queries user information in the</span>
+<span class="sd">    database to log user in.</span>
+<span class="sd">    If user information is found, redirect the user to project page.</span>
+<span class="sd">    Otherwise, render the sign in form again.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;POST&#39;</span><span class="p">:</span>
+        <span class="n">username</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;username&#39;</span><span class="p">]</span>
+        <span class="n">password</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;password&#39;</span><span class="p">]</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">user</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">user</span><span class="o">.</span><span class="n">check_password</span><span class="p">(</span><span class="n">password</span><span class="p">):</span>
+            <span class="n">login_user</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+            <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s1">&#39;projects&#39;</span><span class="p">))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">flash</span><span class="p">(</span><span class="s1">&#39;Invalid username and password combination.&#39;</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s2">&quot;signin.html&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="projects"><a class="viewcode-back" href="../../apiReference.html#app.routes.projects">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/projects&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+<span class="nd">@login_required</span>
+<span class="k">def</span> <span class="nf">projects</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This route displays the projects of a given user</span>
+<span class="sd">    and allows them the ability to add a project.</span>
+<span class="sd">    If a project using the same project_name already exists,</span>
+<span class="sd">    this will display an error to tell the user</span>
+<span class="sd">    to pick another project name.</span>
+<span class="sd">    Project details are listed in a table, allowing user to</span>
+<span class="sd">    upload image data per project, per label, to initiate</span>
+<span class="sd">    training process and to upload new image for prediction.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;GET&#39;</span><span class="p">:</span>
+        <span class="n">users_projects</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User_Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+        <span class="n">project_ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">user_project</span><span class="o">.</span><span class="n">project_id</span> <span class="k">for</span> <span class="n">user_project</span> <span class="ow">in</span> <span class="n">users_projects</span><span class="p">]</span>
+        <span class="n">projects</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">project_id</span><span class="o">.</span><span class="n">in_</span><span class="p">(</span><span class="n">project_ids</span><span class="p">))</span>
+
+        <span class="c1"># proj_owners = {}</span>
+        <span class="c1"># for proj in projects:</span>
+        <span class="c1">#     proj_owners[proj.project_id] = classes.User.query.filter_by(id=proj.project_owner_id).first().username</span>
+
+        <span class="c1"># return objects to easily call by attribute names,</span>
+        <span class="c1"># rather than by indexes, please keep</span>
+        <span class="n">proj_labs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">proj</span> <span class="ow">in</span> <span class="n">projects</span><span class="p">:</span>
+            <span class="n">proj_labs</span><span class="p">[</span><span class="n">proj</span><span class="o">.</span><span class="n">project_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span>
+                <span class="n">project_id</span><span class="o">=</span><span class="n">proj</span><span class="o">.</span><span class="n">project_id</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+        <span class="c1"># use dictionary to easily call by key which matches the ids,</span>
+        <span class="c1"># more secure than by indexes, please keep</span>
+
+        <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;projects.html&#39;</span><span class="p">,</span> <span class="n">projects</span><span class="o">=</span><span class="n">projects</span><span class="p">,</span>
+                               <span class="n">proj_labs</span><span class="o">=</span><span class="n">proj_labs</span>
+                               <span class="c1"># , proj_owners=proj_owners</span>
+                               <span class="p">)</span>
+
+    <span class="k">elif</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;POST&#39;</span><span class="p">:</span>
+        <span class="n">project_name</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;project_name&#39;</span><span class="p">]</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">label</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;labels&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)]</span>
+
+        <span class="c1"># this was updated</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="nb">set</span><span class="p">(</span><span class="n">labels</span><span class="p">))</span> <span class="o">!=</span> <span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">):</span>
+            <span class="k">return</span> <span class="n">f</span><span class="s2">&quot;&lt;h1&gt;There are duplicate labels. Please enter labels that are different.&lt;/h1&gt;&quot;</span>
+        <span class="c1"># TODO: verify label_names to be unique within one project,</span>
+        <span class="c1"># TODO: right now can have same name but different labelid.</span>
+
+        <span class="c1"># query the Project table to see if the project already exists</span>
+        <span class="c1"># if it does, tell the user to pick another project_name</span>
+        <span class="n">users_projects</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User_Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+        <span class="n">project_ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">user_project</span><span class="o">.</span><span class="n">project_id</span> <span class="k">for</span> <span class="n">user_project</span> <span class="ow">in</span> <span class="n">users_projects</span><span class="p">]</span>
+
+        <span class="c1"># if a user has multiple projects</span>
+        <span class="c1"># check if the project name with the same name already exists for them</span>
+        <span class="n">projects_with_same_name</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">users_projects</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">projects</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_name</span><span class="o">=</span><span class="n">project_name</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+            <span class="n">projects_with_same_name</span> <span class="o">=</span> <span class="p">[</span><span class="n">project</span><span class="o">.</span><span class="n">project_id</span> <span class="k">for</span> <span class="n">project</span> <span class="ow">in</span> <span class="n">projects</span> <span class="k">if</span> <span class="n">project</span><span class="o">.</span><span class="n">project_id</span> <span class="ow">in</span> <span class="n">project_ids</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">projects_with_same_name</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">f</span><span class="s2">&quot;&lt;h1&gt; A project with the name: </span><span class="si">{project_name}</span><span class="s2">&quot;</span> <span class="o">+</span> \
+                   <span class="s2">&quot; already exists. Please choose another &quot;</span> \
+                   <span class="s2">&quot;name for your project.&lt;/h1&gt;&quot;</span>
+            <span class="c1"># flash(&quot;A project with the same name already exists.&quot;</span>
+            <span class="c1">#       &quot;Please choose another name.&quot;)</span>
+            <span class="c1"># return url_for(&#39;projects&#39;)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># insert into the Project table</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="p">(</span><span class="n">project_name</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">current_user</span><span class="o">.</span><span class="n">id</span><span class="p">)))</span>
+
+            <span class="c1"># get the project for the current user that was just added</span>
+            <span class="c1"># (by using the creation date)</span>
+            <span class="n">most_recent_project</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">query</span> \
+                <span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_owner_id</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">id</span><span class="p">)</span> \
+                <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">project_creation_date</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">most_recent_project</span><span class="o">.</span><span class="n">project_name</span><span class="p">)</span>
+
+            <span class="c1"># insert into the User_Project table</span>
+            <span class="c1"># so that the user is associated with a project</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">User_Project</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">current_user</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+                                                <span class="n">most_recent_project</span><span class="o">.</span><span class="n">project_id</span><span class="p">))</span>
+
+            <span class="c1"># TODO: find a way to bulk insert</span>
+            <span class="c1"># insert all of the labels that the user entered</span>
+            <span class="k">for</span> <span class="n">label_idx</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">labels</span><span class="p">):</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">most_recent_project</span><span class="o">.</span><span class="n">project_id</span><span class="p">,</span>
+                                             <span class="n">label</span><span class="p">,</span> <span class="n">label_idx</span><span class="p">))</span>
+
+            <span class="n">most_recent_project_labels</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">most_recent_project</span><span class="o">.</span><span class="n">project_id</span><span class="p">)</span>
+
+            <span class="c1"># this was added</span>
+            <span class="c1"># TODO: when creating the project, I need to create the model </span>
+            <span class="c1"># and prediction folders for a given project in S3 </span>
+
+            <span class="n">bucket</span> <span class="o">=</span> <span class="n">get_deepVision_bucket</span><span class="p">()</span>
+            <span class="c1"># bucket.set_acl(&#39;public-read&#39;)</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="n">Key</span><span class="p">(</span><span class="n">bucket</span><span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">most_recent_project_labels</span><span class="p">:</span>
+                <span class="n">k</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;/{str(most_recent_project.project_id)}/{str(label.label_id)}/&#39;</span>
+                <span class="n">k</span><span class="o">.</span><span class="n">set_contents_from_string</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+            <span class="n">k</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;/{str(most_recent_project.project_id)}/model/&#39;</span>
+            <span class="n">k</span><span class="o">.</span><span class="n">set_contents_from_string</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+            <span class="n">k</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;/{str(most_recent_project.project_id)}/prediction/&#39;</span>
+            <span class="n">k</span><span class="o">.</span><span class="n">set_contents_from_string</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+            <span class="c1"># # create folder in predict bucket</span>
+            <span class="c1"># bucket_name = &#39;msds603-deep-vision-predict&#39;</span>
+            <span class="c1"># s3_connection = boto.connect_s3(</span>
+            <span class="c1">#     aws_access_key_id=&#39;AKIAIQRI4EE5ENXNW6LQ&#39;,</span>
+            <span class="c1">#     aws_secret_access_key=&#39;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&#39;)</span>
+            <span class="c1"># # to be fixed with paramiko</span>
+            <span class="c1"># bucket = s3_connection.get_bucket(bucket_name)</span>
+
+            <span class="c1"># bucket.set_acl(&#39;public-read&#39;)</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="n">Key</span><span class="p">(</span><span class="n">bucket</span><span class="p">)</span>
+            <span class="n">k</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="n">f</span><span class="s1">&#39;/{str(most_recent_project.project_id)}/&#39;</span>
+            <span class="n">k</span><span class="o">.</span><span class="n">set_contents_from_string</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+
+            <span class="c1"># pass the list of projects (including the new project) to the page</span>
+            <span class="c1"># so it can be shown to the user</span>
+            <span class="c1"># only commit the transactions once everything has been entered.</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+            
+            <span class="n">users_projects</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User_Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">id</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+            <span class="n">project_ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">user_project</span><span class="o">.</span><span class="n">project_id</span> <span class="k">for</span> <span class="n">user_project</span> <span class="ow">in</span> <span class="n">users_projects</span><span class="p">]</span>
+            <span class="n">projects</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">project_id</span><span class="o">.</span><span class="n">in_</span><span class="p">(</span><span class="n">project_ids</span><span class="p">))</span>
+            
+            <span class="n">proj_owners</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">proj</span> <span class="ow">in</span> <span class="n">projects</span><span class="p">:</span>
+                <span class="n">proj_owners</span><span class="p">[</span><span class="n">proj</span><span class="o">.</span><span class="n">project_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">proj</span><span class="o">.</span><span class="n">project_owner_id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">username</span>
+            
+            <span class="n">proj_labs</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">proj</span> <span class="ow">in</span> <span class="n">projects</span><span class="p">:</span>
+                <span class="n">proj_labs</span><span class="p">[</span><span class="n">proj</span><span class="o">.</span><span class="n">project_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span>
+                    <span class="n">project_id</span><span class="o">=</span><span class="n">proj</span><span class="o">.</span><span class="n">project_id</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+            <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;projects.html&#39;</span><span class="p">,</span> <span class="n">projects</span><span class="o">=</span><span class="n">projects</span><span class="p">,</span>
+                                   <span class="n">proj_labs</span><span class="o">=</span><span class="n">proj_labs</span>
+                                   <span class="c1"># , proj_owners=proj_owners</span>
+                                   <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="UploadFileForm"><a class="viewcode-back" href="../../apiReference.html#app.routes.UploadFileForm">[docs]</a><span class="k">class</span> <span class="nc">UploadFileForm</span><span class="p">(</span><span class="n">FlaskForm</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;Class for uploading multiple files when submitted&quot;&quot;&quot;</span>
+    <span class="n">file_selector</span> <span class="o">=</span> <span class="n">MultipleFileField</span><span class="p">(</span><span class="s1">&#39;File&#39;</span><span class="p">)</span>
+    <span class="n">submit</span> <span class="o">=</span> <span class="n">SubmitField</span><span class="p">(</span><span class="s1">&#39;Submit&#39;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="upload"><a class="viewcode-back" href="../../apiReference.html#app.routes.upload">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/upload/&lt;labid&gt;&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+<span class="nd">@login_required</span>
+<span class="k">def</span> <span class="nf">upload</span><span class="p">(</span><span class="n">labid</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This route allows users to bulk upload image data per project, per label.</span>
+<span class="sd">    Files would be stored in S3 bucket organized as &quot;./project/label/files&quot;.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">accepts</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;bmp&#39;</span><span class="p">,</span> <span class="s1">&#39;dib&#39;</span><span class="p">,</span><span class="s1">&#39;jpeg&#39;</span><span class="p">,</span> <span class="s1">&#39;jpg&#39;</span><span class="p">,</span> <span class="s1">&#39;jpe&#39;</span><span class="p">,</span> <span class="s1">&#39;jp2&#39;</span><span class="p">,</span> <span class="s1">&#39;png&#39;</span><span class="p">,</span> <span class="s1">&#39;webp&#39;</span><span class="p">,</span>
+               <span class="s1">&#39;pbm&#39;</span><span class="p">,</span> <span class="s1">&#39;pgm&#39;</span><span class="p">,</span> <span class="s1">&#39;ppm&#39;</span><span class="p">,</span> <span class="s1">&#39;sr&#39;</span><span class="p">,</span> <span class="s1">&#39;ras&#39;</span><span class="p">,</span><span class="s1">&#39;tiff&#39;</span><span class="p">,</span> <span class="s1">&#39;tif&#39;</span><span class="p">]</span>
+
+    <span class="n">label</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">label_id</span><span class="o">=</span><span class="n">labid</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+    <span class="n">labelnm</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">label_name</span>
+    <span class="n">projid</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">project_id</span>
+
+    <span class="n">projnm</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span> \
+        <span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">project_name</span>
+
+    <span class="n">form</span> <span class="o">=</span> <span class="n">UploadFileForm</span><span class="p">()</span>
+    <span class="n">nfiles</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="n">muploaded</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">if</span> <span class="n">form</span><span class="o">.</span><span class="n">validate_on_submit</span><span class="p">():</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="n">form</span><span class="o">.</span><span class="n">file_selector</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">nfiles</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span>
+        <span class="n">aspect_ratios_newfs</span> <span class="o">=</span> <span class="p">[]</span>  <span class="c1"># aspect ratios of the each image</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">accepts</span><span class="p">:</span>
+                <span class="k">continue</span>  <span class="c1"># filter out those</span>
+            <span class="n">tmp</span> <span class="o">=</span> <span class="n">tempfile</span><span class="o">.</span><span class="n">NamedTemporaryFile</span><span class="p">()</span>
+            <span class="n">file_content</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+            <span class="c1"># file must be temporarily created so that it can be read</span>
+            <span class="c1"># to find out the aspect ratio of the image</span>
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">tmp</span><span class="o">.</span><span class="n">name</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">data</span><span class="p">:</span>
+                <span class="n">file_content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+                <span class="n">data</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">file_content</span><span class="p">)</span>
+            <span class="c1"># TODO: rename the images to be unique per project</span>
+            <span class="c1"># and based on the count of images already stored</span>
+            <span class="c1"># so that if you upload the same image multiple times</span>
+            <span class="c1"># there will be multiple copies with different filenames</span>
+            <span class="c1"># rather than updating the same file</span>
+            <span class="n">image</span> <span class="o">=</span> <span class="n">mpimg</span><span class="o">.</span><span class="n">imread</span><span class="p">(</span><span class="n">tmp</span><span class="o">.</span><span class="n">name</span><span class="p">)</span>
+            <span class="n">aspect_ratio</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="nb">float</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span><span class="o">/</span><span class="nb">float</span><span class="p">(</span><span class="n">image</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]),</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="n">secure_filename</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">filename</span><span class="p">)</span>
+
+            <span class="n">aspect_ratios_newfs</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">aspect_ratio</span><span class="p">))</span>
+
+            <span class="c1"># send file to s3 one by one</span>
+            <span class="n">bucket</span> <span class="o">=</span> <span class="n">get_deepVision_bucket</span><span class="p">()</span>
+            <span class="n">k</span> <span class="o">=</span> <span class="n">Key</span><span class="p">(</span><span class="n">bucket</span><span class="p">)</span>
+            <span class="n">ts</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">())</span>
+            <span class="n">k</span><span class="o">.</span><span class="n">key</span> <span class="o">=</span> <span class="s1">&#39;/&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">projid</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">labid</span><span class="p">),</span> <span class="nb">str</span><span class="p">(</span><span class="n">ts</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;_&quot;</span><span class="o">+</span><span class="n">filename</span><span class="p">])</span>
+            <span class="n">k</span><span class="o">.</span><span class="n">set_contents_from_string</span><span class="p">(</span><span class="n">file_content</span><span class="p">)</span>
+
+        <span class="n">muploaded</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">aspect_ratios_newfs</span><span class="p">)</span>
+        <span class="c1"># update the ratio tabel outside the loop over each file</span>
+        <span class="n">aspect_ratio_newcounts</span> <span class="o">=</span> <span class="n">Counter</span><span class="p">(</span><span class="n">aspect_ratios_newfs</span><span class="p">)</span>
+        <span class="c1"># a dictionary of ratios: counts of new images</span>
+        <span class="k">for</span> <span class="n">r</span> <span class="ow">in</span> <span class="n">aspect_ratio_newcounts</span><span class="p">:</span>
+            <span class="n">aspect_ratios</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Aspect_Ratio</span><span class="o">.</span><span class="n">query</span>\
+                <span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">aspect_ratio</span><span class="o">=</span><span class="n">r</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">aspect_ratios</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">Aspect_Ratio</span><span class="p">(</span>
+                    <span class="n">projid</span><span class="p">,</span> <span class="n">r</span><span class="p">,</span> <span class="n">aspect_ratio_newcounts</span><span class="p">[</span><span class="n">r</span><span class="p">]))</span>
+            <span class="k">elif</span> <span class="nb">len</span><span class="p">(</span><span class="n">aspect_ratios</span><span class="p">)</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">aspect_ratios</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">count</span> <span class="o">+=</span> <span class="n">aspect_ratio_newcounts</span><span class="p">[</span><span class="n">r</span><span class="p">]</span>
+
+        <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;upload_lab.html&#39;</span><span class="p">,</span> <span class="n">projnm</span><span class="o">=</span><span class="n">projnm</span><span class="p">,</span><span class="n">labelnm</span><span class="o">=</span><span class="n">labelnm</span><span class="p">,</span>
+                           <span class="n">form</span><span class="o">=</span><span class="n">form</span><span class="p">,</span> <span class="n">nfiles</span><span class="o">=</span><span class="n">nfiles</span><span class="p">,</span> <span class="n">muploaded</span><span class="o">=</span><span class="n">muploaded</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="train"><a class="viewcode-back" href="../../apiReference.html#app.routes.train">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/train/&lt;projid&gt;&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+<span class="nd">@login_required</span>
+<span class="k">def</span> <span class="nf">train</span><span class="p">(</span><span class="n">projid</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This route triggered when a user clicks &quot;Train&quot; button in a project.</span>
+<span class="sd">    After training is done, the user will receive an notification email.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">error</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># query inputs for to train the model</span>
+
+    <span class="c1"># Check that minimum amount of images are uploaded</span>
+    <span class="c1"># TODO: Frontend handeling this</span>
+    <span class="n">folders</span> <span class="o">=</span> <span class="n">CLIENT</span><span class="o">.</span><span class="n">list_objects</span><span class="p">(</span><span class="n">Bucket</span><span class="o">=</span><span class="n">BUCKET_NAME</span><span class="p">,</span> <span class="n">Prefix</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{projid}</span><span class="s1">/&#39;</span><span class="p">,</span> <span class="n">Delimiter</span><span class="o">=</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+    <span class="c1"># if &#39;CommonPrefixes&#39; in folders:</span>
+    <span class="n">dirs</span> <span class="o">=</span> <span class="p">[</span><span class="n">di</span><span class="p">[</span><span class="s1">&#39;Prefix&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">di</span> <span class="ow">in</span> <span class="n">folders</span><span class="p">[</span><span class="s1">&#39;CommonPrefixes&#39;</span><span class="p">]</span> <span class="k">if</span>
+            <span class="n">di</span><span class="p">[</span><span class="s1">&#39;Prefix&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{projid}</span><span class="s1">/prediction/&#39;</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{projid}</span><span class="s1">/model/&#39;</span><span class="p">]]</span>
+
+    <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dirs</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+        <span class="k">for</span> <span class="n">di</span> <span class="ow">in</span> <span class="n">dirs</span><span class="p">:</span>
+            <span class="n">files</span> <span class="o">=</span> <span class="n">CLIENT</span><span class="o">.</span><span class="n">list_objects</span><span class="p">(</span><span class="n">Bucket</span><span class="o">=</span><span class="n">BUCKET_NAME</span><span class="p">,</span> <span class="n">Prefix</span><span class="o">=</span><span class="n">di</span><span class="p">,</span> <span class="n">Delimiter</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="s1">&#39;Contents&#39;</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+                <span class="n">files</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;Key&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">[</span><span class="s1">&#39;Contents&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">:]]</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span> <span class="o">&lt;</span> <span class="n">MIN_IMG_LBL</span><span class="p">:</span>
+                    <span class="n">lbl_id</span> <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                    <span class="n">lbl_name</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">,</span> <span class="n">label_id</span><span class="o">=</span><span class="n">lbl_id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">label_name</span>
+                    <span class="n">message</span> <span class="o">=</span> <span class="p">(</span><span class="n">f</span><span class="s2">&quot;You currently have uploaded {len(files)}, you are missing&quot;</span> <span class="o">+</span>
+                               <span class="n">f</span><span class="s2">&quot; {MIN_IMG_LBL - len(files)} to reach the minimum amount of images (</span><span class="si">{MIN_IMG_LBL}</span><span class="s2">) for label </span><span class="si">{lbl_name}</span><span class="s2">&quot;</span><span class="p">)</span>
+                    <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s1">&#39;projects&#39;</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">)</span>
+
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">lbl_id</span> <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">lbl_name</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">,</span> <span class="n">label_id</span><span class="o">=</span><span class="n">lbl_id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">label_name</span>
+                <span class="n">message</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;Upload </span><span class="si">{MIN_IMG_LBL}</span><span class="s2"> images for </span><span class="si">{lbl_name}</span><span class="s2"> before starting training&quot;</span>
+                <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s1">&#39;projects&#39;</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">)</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;Upload </span><span class="si">{MIN_IMG_LBL}</span><span class="s2"> images for each label before start training&quot;</span>
+        <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s1">&#39;projects&#39;</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">)</span>
+
+
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Enters training route&#39;</span><span class="p">)</span>
+    <span class="n">max_asp_ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">Aspect_Ratio</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">Aspect_Ratio</span><span class="o">.</span><span class="n">count</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">aspect_ratio</span><span class="p">)</span>
+
+    <span class="c1"># proj_name = proj.project_name</span>
+
+
+    <span class="c1"># last_asp_ratio = proj.last_train_asp_ratio</span>
+    
+    <span class="n">project_owner_id</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">project_owner_id</span>
+    <span class="n">proj_owner</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">project_owner_id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span> 
+    <span class="n">proj_owner_name</span> <span class="o">=</span> <span class="n">proj_owner</span><span class="o">.</span><span class="n">username</span>
+    <span class="n">proj_owner_email</span> <span class="o">=</span> <span class="n">proj_owner</span><span class="o">.</span><span class="n">email</span>
+
+    <span class="n">labels</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+    <span class="n">lbl2idx</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">label</span><span class="o">.</span><span class="n">label_id</span><span class="p">):</span> <span class="p">(</span><span class="n">label</span><span class="o">.</span><span class="n">label_index</span> <span class="k">if</span> <span class="n">label</span><span class="o">.</span><span class="n">label_index</span> <span class="k">else</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">labels</span><span class="p">)}</span>
+
+    <span class="c1"># call the train function from ml module</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;before training&#39;</span><span class="p">,</span> <span class="n">lbl2idx</span><span class="p">)</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">t</span> <span class="o">=</span> <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">train_ml</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">projid</span><span class="p">,</span> <span class="n">max_asp_ratio</span><span class="p">,</span> <span class="n">proj_owner_name</span><span class="p">,</span> <span class="n">proj_owner_email</span><span class="p">,</span> <span class="n">lbl2idx</span><span class="p">))</span>
+        <span class="n">t</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+        <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;Your model is training now. You will receive an email once it&#39;s reday.&quot;</span>
+    <span class="k">except</span><span class="p">:</span> <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;There has been an error training your model. Please contact our support email at info.deep.vision.co@gmail.com&quot;</span>
+    <span class="c1">#train_ml(projid, max_asp_ratio, proj_owner_name, proj_owner_email, lbl2idx)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Model initiated in another thread.&quot;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s1">&#39;projects&#39;</span><span class="p">),</span> <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="training"><a class="viewcode-back" href="../../apiReference.html#app.routes.training">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/training/&lt;projid&gt;&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+<span class="nd">@login_required</span>
+<span class="k">def</span> <span class="nf">training</span><span class="p">(</span><span class="n">projid</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This route triggered when a user clicks &quot;Train&quot; button in a project.</span>
+<span class="sd">    After training is done, the user will receive an notification email.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">projnm</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span> \
+            <span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">project_name</span>
+
+    <span class="n">error</span> <span class="o">=</span> <span class="kc">None</span>
+    <span class="c1"># query inputs for to train the model</span>
+
+    <span class="c1"># Check that minimum amount of images are uploaded</span>
+    <span class="c1"># TODO: Frontend handeling this</span>
+    <span class="n">folders</span> <span class="o">=</span> <span class="n">CLIENT</span><span class="o">.</span><span class="n">list_objects</span><span class="p">(</span><span class="n">Bucket</span><span class="o">=</span><span class="n">BUCKET_NAME</span><span class="p">,</span> <span class="n">Prefix</span><span class="o">=</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{projid}</span><span class="s1">/&#39;</span><span class="p">,</span> <span class="n">Delimiter</span><span class="o">=</span><span class="s2">&quot;/&quot;</span><span class="p">)</span>
+
+    <span class="c1"># if &#39;CommonPrefixes&#39; in folders:</span>
+    <span class="n">dirs</span> <span class="o">=</span> <span class="p">[</span><span class="n">di</span><span class="p">[</span><span class="s1">&#39;Prefix&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">di</span> <span class="ow">in</span> <span class="n">folders</span><span class="p">[</span><span class="s1">&#39;CommonPrefixes&#39;</span><span class="p">]</span> <span class="k">if</span>
+            <span class="n">di</span><span class="p">[</span><span class="s1">&#39;Prefix&#39;</span><span class="p">]</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">f</span><span class="s1">&#39;</span><span class="si">{projid}</span><span class="s1">/prediction/&#39;</span><span class="p">,</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{projid}</span><span class="s1">/model/&#39;</span><span class="p">]]</span>
+    <span class="n">label_with_img_num</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="c1"># CALCULATE THE NUM OF IMGS FOR EACH LABEL</span>
+    <span class="n">all_labels</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+    <span class="n">all_labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">lb</span><span class="o">.</span><span class="n">label_name</span> <span class="k">for</span> <span class="n">lb</span> <span class="ow">in</span> <span class="n">all_labels</span><span class="p">]</span>
+    
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span><span class="o">==</span><span class="s1">&#39;GET&#39;</span><span class="p">:</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">dirs</span><span class="p">)</span><span class="o">&gt;</span><span class="mi">0</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">di</span> <span class="ow">in</span> <span class="n">dirs</span><span class="p">:</span>
+                <span class="n">files</span> <span class="o">=</span> <span class="n">CLIENT</span><span class="o">.</span><span class="n">list_objects</span><span class="p">(</span><span class="n">Bucket</span><span class="o">=</span><span class="n">BUCKET_NAME</span><span class="p">,</span> <span class="n">Prefix</span><span class="o">=</span><span class="n">di</span><span class="p">,</span> <span class="n">Delimiter</span><span class="o">=</span><span class="s2">&quot;&quot;</span><span class="p">)</span>
+                <span class="n">lbl_id</span> <span class="o">=</span> <span class="n">di</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+                <span class="n">lbl_name</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">,</span> <span class="n">label_id</span><span class="o">=</span><span class="n">lbl_id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">label_name</span>
+
+                <span class="k">if</span> <span class="s1">&#39;Contents&#39;</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+                    <span class="n">files</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="p">[</span><span class="s1">&#39;Key&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">[</span><span class="s1">&#39;Contents&#39;</span><span class="p">][</span><span class="mi">1</span><span class="p">:]]</span>
+                    <span class="n">num_files_with_lbl</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">files</span><span class="p">)</span>
+                    <span class="k">if</span> <span class="n">num_files_with_lbl</span> <span class="o">&lt;</span> <span class="n">MIN_IMG_LBL</span><span class="p">:</span>
+                        <span class="c1"># lbl_id = di.split(&#39;/&#39;)[1]</span>
+                        <span class="c1"># lbl_name = classes.Label.query.filter_by(project_id=projid, label_id=lbl_id).first().label_name</span>
+                        <span class="n">message</span> <span class="o">=</span> <span class="p">(</span><span class="n">f</span><span class="s2">&quot;You currently have uploaded {len(files)}, you are missing&quot;</span> <span class="o">+</span>
+                                <span class="n">f</span><span class="s2">&quot; {MIN_IMG_LBL - len(files)} to reach the minimum amount of images (</span><span class="si">{MIN_IMG_LBL}</span><span class="s2">) for label </span><span class="si">{lbl_name}</span><span class="s2">&quot;</span><span class="p">)</span>
+                        <span class="c1"># return redirect(url_for(&#39;projects&#39;), message=message)</span>
+                        <span class="n">label_with_img_num</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">lbl_name</span><span class="p">,</span> <span class="n">num_files_with_lbl</span><span class="p">))</span>
+                        <span class="k">for</span> <span class="n">lb</span> <span class="ow">in</span> <span class="n">all_labels</span><span class="p">:</span>
+                            <span class="k">if</span> <span class="n">lb</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">label_with_img_num</span><span class="p">]:</span>
+                                <span class="n">label_with_img_num</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">lb</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+                        <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;training.html&#39;</span><span class="p">,</span> <span class="n">projnm</span><span class="o">=</span><span class="n">projnm</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">,</span> <span class="n">projid</span><span class="o">=</span><span class="n">projid</span><span class="p">,</span> \
+                            <span class="n">label_with_img_num</span><span class="o">=</span><span class="n">label_with_img_num</span><span class="p">)</span>
+                    <span class="k">else</span><span class="p">:</span>
+                        <span class="n">label_with_img_num</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">lbl_name</span><span class="p">,</span> <span class="n">num_files_with_lbl</span><span class="p">))</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="c1"># lbl_id = di.split(&#39;/&#39;)[1]</span>
+                    <span class="c1"># lbl_name = classes.Label.query.filter_by(project_id=projid, label_id=lbl_id).first().label_name</span>
+                    <span class="n">message</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;Upload </span><span class="si">{MIN_IMG_LBL}</span><span class="s2"> images for </span><span class="si">{lbl_name}</span><span class="s2"> before starting training&quot;</span>
+                    <span class="n">num_files_with_lbl</span> <span class="o">=</span> <span class="mi">0</span>
+                    <span class="n">label_with_img_num</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">lbl_name</span><span class="p">,</span> <span class="n">num_files_with_lbl</span><span class="p">))</span>
+                    <span class="k">for</span> <span class="n">lb</span> <span class="ow">in</span> <span class="n">all_labels</span><span class="p">:</span>
+                        <span class="k">if</span> <span class="n">lb</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">label_with_img_num</span><span class="p">]:</span>
+                            <span class="n">label_with_img_num</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">lb</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+                    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;training.html&#39;</span><span class="p">,</span> <span class="n">projnm</span><span class="o">=</span><span class="n">projnm</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">,</span> <span class="n">projid</span><span class="o">=</span><span class="n">projid</span><span class="p">,</span> \
+                        <span class="n">label_with_img_num</span><span class="o">=</span><span class="n">label_with_img_num</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;Upload </span><span class="si">{MIN_IMG_LBL}</span><span class="s2"> images for each label before start training&quot;</span>
+            <span class="c1"># return redirect(url_for(&#39;projects&#39;), message=message)</span>
+            <span class="k">for</span> <span class="n">lb</span> <span class="ow">in</span> <span class="n">all_labels</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">lb</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">[</span><span class="n">i</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">label_with_img_num</span><span class="p">]:</span>
+                    <span class="n">label_with_img_num</span><span class="o">.</span><span class="n">append</span><span class="p">((</span><span class="n">lb</span><span class="p">,</span> <span class="mi">0</span><span class="p">))</span>
+            <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;training.html&#39;</span><span class="p">,</span> <span class="n">projnm</span><span class="o">=</span><span class="n">projnm</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">,</span> \
+                <span class="n">projid</span><span class="o">=</span><span class="n">projid</span><span class="p">,</span> <span class="n">label_with_img_num</span><span class="o">=</span><span class="n">label_with_img_num</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Enters training route&#39;</span><span class="p">)</span>
+        <span class="n">max_asp_ratio</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">Aspect_Ratio</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span>\
+            <span class="n">order_by</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">Aspect_Ratio</span><span class="o">.</span><span class="n">count</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">aspect_ratio</span><span class="p">)</span>
+
+        <span class="c1"># proj_name = proj.project_name</span>
+        <span class="c1"># last_asp_ratio = proj.last_train_asp_ratio</span>
+        <span class="n">project_owner_id</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">project_owner_id</span>
+        <span class="n">proj_owner</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">project_owner_id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span> 
+        <span class="n">proj_owner_name</span> <span class="o">=</span> <span class="n">proj_owner</span><span class="o">.</span><span class="n">username</span>
+        <span class="n">proj_owner_email</span> <span class="o">=</span> <span class="n">proj_owner</span><span class="o">.</span><span class="n">email</span>
+
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+        <span class="n">lbl2idx</span> <span class="o">=</span> <span class="p">{</span><span class="nb">str</span><span class="p">(</span><span class="n">label</span><span class="o">.</span><span class="n">label_id</span><span class="p">):</span> <span class="p">(</span><span class="n">label</span><span class="o">.</span><span class="n">label_index</span> <span class="k">if</span> <span class="n">label</span><span class="o">.</span><span class="n">label_index</span> <span class="k">else</span> <span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">label</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">labels</span><span class="p">)}</span>
+
+        <span class="c1"># call the train function from ml module</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;before training&#39;</span><span class="p">,</span> <span class="n">lbl2idx</span><span class="p">)</span>
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">t</span> <span class="o">=</span> <span class="n">Thread</span><span class="p">(</span><span class="n">target</span><span class="o">=</span><span class="n">train_ml</span><span class="p">,</span> <span class="n">args</span><span class="o">=</span><span class="p">(</span><span class="n">projid</span><span class="p">,</span> <span class="n">max_asp_ratio</span><span class="p">,</span> <span class="n">proj_owner_name</span><span class="p">,</span> <span class="n">proj_owner_email</span><span class="p">,</span> <span class="n">lbl2idx</span><span class="p">))</span>
+            <span class="n">t</span><span class="o">.</span><span class="n">start</span><span class="p">()</span>
+            <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;Your model is training now. You will receive an email once it&#39;s ready.&quot;</span>
+        <span class="k">except</span><span class="p">:</span> <span class="n">message</span> <span class="o">=</span> <span class="s2">&quot;There has been an error training your model. Please contact our support email at info.deep.vision.co@gmail.com&quot;</span>
+        <span class="c1">#train_ml(projid, max_asp_ratio, proj_owner_name, proj_owner_email, lbl2idx)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;Model initiated in another thread.&quot;</span><span class="p">)</span>
+        <span class="c1"># return redirect(url_for(&#39;projects&#39;), message=message)</span>
+
+        <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;training.html&#39;</span><span class="p">,</span> <span class="n">projnm</span><span class="o">=</span><span class="n">projnm</span><span class="p">,</span> <span class="n">message</span><span class="o">=</span><span class="n">message</span><span class="p">,</span> \
+            <span class="n">projid</span><span class="o">=</span><span class="n">projid</span><span class="p">,</span> <span class="n">label_with_img_num</span><span class="o">=</span><span class="n">label_with_img_num</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="predict"><a class="viewcode-back" href="../../apiReference.html#app.routes.predict">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/predict/&lt;projid&gt;&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+<span class="nd">@login_required</span>
+<span class="k">def</span> <span class="nf">predict</span><span class="p">(</span><span class="n">projid</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This route provides prediction on newly uploaded image for a project.</span>
+<span class="sd">    :return: predicted label of the new image, display on the website.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">client</span> <span class="o">=</span> <span class="n">boto3</span><span class="o">.</span><span class="n">client</span><span class="p">(</span><span class="s1">&#39;s3&#39;</span><span class="p">,</span> <span class="n">aws_access_key_id</span><span class="o">=</span><span class="s1">&#39;AKIAIQRI4EE5ENXNW6LQ&#39;</span><span class="p">,</span>
+                          <span class="n">aws_secret_access_key</span><span class="o">=</span><span class="s1">&#39;2gduLL4umVC9j7XXc2L1N8DfUVQQKcFmnezTYF8O&#39;</span><span class="p">)</span>
+    <span class="n">bucket_name</span> <span class="o">=</span> <span class="s1">&#39;msds603-deep-vision&#39;</span>
+
+    <span class="n">projnm</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span> \
+        <span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">project_name</span>
+
+    <span class="c1"># check if there is a model</span>
+    <span class="n">filepaths</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">list_objects</span><span class="p">(</span><span class="n">Bucket</span><span class="o">=</span><span class="n">bucket_name</span><span class="p">,</span> <span class="n">Prefix</span><span class="o">=</span><span class="n">projid</span><span class="p">,</span> <span class="n">Delimiter</span><span class="o">=</span><span class="s1">&#39;&#39;</span><span class="p">)</span>
+    <span class="n">filepaths</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;Key&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">filepaths</span><span class="p">[</span><span class="s1">&#39;Contents&#39;</span><span class="p">]</span>
+                  <span class="k">if</span> <span class="n">item</span><span class="p">[</span><span class="s1">&#39;Key&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="n">projid</span><span class="p">]</span>
+    <span class="k">if</span> <span class="n">f</span><span class="s1">&#39;</span><span class="si">{projid}</span><span class="s1">/model/&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">filepaths</span><span class="p">:</span>
+        <span class="k">return</span> <span class="s2">&quot;A model has to be trained before predicting.&quot;</span>
+
+    <span class="n">form</span> <span class="o">=</span> <span class="n">UploadFileForm</span><span class="p">()</span>
+    <span class="n">project_predictions</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Pred_Results</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+    <span class="k">if</span> <span class="n">form</span><span class="o">.</span><span class="n">validate_on_submit</span><span class="p">():</span>
+        <span class="n">files</span> <span class="o">=</span> <span class="n">form</span><span class="o">.</span><span class="n">file_selector</span><span class="o">.</span><span class="n">data</span>
+        <span class="n">accepts</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;bmp&#39;</span><span class="p">,</span> <span class="s1">&#39;dib&#39;</span><span class="p">,</span> <span class="s1">&#39;jpeg&#39;</span><span class="p">,</span> <span class="s1">&#39;jpg&#39;</span><span class="p">,</span> <span class="s1">&#39;jpe&#39;</span><span class="p">,</span> <span class="s1">&#39;jp2&#39;</span><span class="p">,</span> <span class="s1">&#39;png&#39;</span><span class="p">,</span> <span class="s1">&#39;webp&#39;</span><span class="p">,</span>
+                   <span class="s1">&#39;pbm&#39;</span><span class="p">,</span> <span class="s1">&#39;pgm&#39;</span><span class="p">,</span> <span class="s1">&#39;ppm&#39;</span><span class="p">,</span> <span class="s1">&#39;sr&#39;</span><span class="p">,</span> <span class="s1">&#39;ras&#39;</span><span class="p">,</span> <span class="s1">&#39;tiff&#39;</span><span class="p">,</span> <span class="s1">&#39;tif&#39;</span><span class="p">]</span>
+
+        <span class="c1"># Get aspect_ratio</span>
+        <span class="n">project</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+        <span class="n">aspect_ratio</span> <span class="o">=</span> <span class="n">project</span><span class="o">.</span><span class="n">last_train_asp_ratio</span>
+
+        <span class="c1"># remove and create the tmp sub directory for that project</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="s2">&quot;/home/ec2-user/product-analytics-group-project-deepvision/code/app/static/tmp&quot;</span><span class="p">):</span>
+            <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="s2">&quot;/home/ec2-user/product-analytics-group-project-deepvision/code/app/static/tmp/&quot;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;/home/ec2-user/product-analytics-group-project-deepvision/code/app/static/tmp/</span><span class="si">{projid}</span><span class="s2">&quot;</span><span class="p">):</span> <span class="n">shutil</span><span class="o">.</span><span class="n">rmtree</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;/home/ec2-user/product-analytics-group-project-deepvision/code/app/static/tmp/</span><span class="si">{projid}</span><span class="s2">&quot;</span><span class="p">)</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;/home/ec2-user/product-analytics-group-project-deepvision/code/app/static/tmp/</span><span class="si">{projid}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+        <span class="c1"># Store imgs to s3 and ec2.</span>
+        <span class="n">s3_filepaths</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="n">ec2_filepaths</span> <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">files</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">f</span><span class="o">.</span><span class="n">filename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">accepts</span><span class="p">:</span>
+            <span class="c1"># if f.split(&#39;.&#39;)[-1].strip().lower() not in accepts:</span>
+                 <span class="k">continue</span>
+            <span class="n">ts</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+            <span class="n">filename</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="nb">round</span><span class="p">(</span><span class="n">ts</span><span class="p">))</span> <span class="o">+</span><span class="s2">&quot;_&quot;</span><span class="o">+</span> <span class="n">secure_filename</span><span class="p">(</span><span class="n">f</span><span class="o">.</span><span class="n">filename</span><span class="p">)</span>
+            <span class="n">s3_filepath</span> <span class="o">=</span> <span class="s1">&#39;/&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="nb">str</span><span class="p">(</span><span class="n">projid</span><span class="p">),</span> <span class="s1">&#39;prediction&#39;</span><span class="p">,</span> <span class="n">filename</span><span class="p">])</span>
+            <span class="n">ec2_filepath</span> <span class="o">=</span> <span class="s1">&#39;/&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;/home/ec2-user/product-analytics-group-project-deepvision/code/app/static/tmp&#39;</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">projid</span><span class="p">),</span> <span class="n">filename</span><span class="p">])</span>
+
+            <span class="n">file_content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+            <span class="c1"># s3_connection = boto.connect_s3(</span>
+            <span class="c1">#     aws_access_key_id=&#39;AKIAJGAZYBJDBYNQ2LWQ&#39;,</span>
+            <span class="c1">#     aws_secret_access_key=&#39;H7KOIsPvl7SkwdT6Ote5O+G/DWLYyAfXRc/YXEAt&#39;)</span>
+            <span class="c1"># # to be replaced: os.environ[&#39;AWS_ACCESS_KEY_ID&#39;], [&#39;AWS_SECRET_ACCESS_KEY&#39;]</span>
+            <span class="c1"># # rob&#39;s key store in .sh file, paramiko to run</span>
+            <span class="c1"># bucket = s3_connection.get_bucket(bucket_name)</span>
+            <span class="c1"># bucket.set_acl(&#39;public-read&#39;)</span>
+            <span class="c1"># k = Key(bucket)</span>
+            <span class="c1"># k.key = s3_filepath</span>
+            <span class="c1"># k.set_contents_from_string(file_content)</span>
+            <span class="n">client</span><span class="o">.</span><span class="n">put_object</span><span class="p">(</span><span class="n">Body</span><span class="o">=</span><span class="n">file_content</span><span class="p">,</span> <span class="n">Bucket</span><span class="o">=</span><span class="n">BUCKET_NAME</span><span class="p">,</span> <span class="n">Key</span><span class="o">=</span><span class="n">s3_filepath</span><span class="p">,</span><span class="n">ACL</span> <span class="o">=</span> <span class="s1">&#39;public-read&#39;</span><span class="p">)</span>
+
+            <span class="n">s3_filepaths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">s3_filepath</span><span class="p">)</span>
+            <span class="n">ec2_filepaths</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">ec2_filepath</span><span class="p">)</span>
+
+            <span class="k">with</span> <span class="nb">open</span><span class="p">(</span><span class="n">ec2_filepath</span><span class="p">,</span> <span class="s1">&#39;wb&#39;</span><span class="p">)</span> <span class="k">as</span> <span class="n">data</span><span class="p">:</span>
+                <span class="n">file_content</span> <span class="o">=</span> <span class="n">f</span><span class="o">.</span><span class="n">stream</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+                <span class="n">data</span><span class="o">.</span><span class="n">write</span><span class="p">(</span><span class="n">file_content</span><span class="p">)</span>
+        
+        <span class="n">labels</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+        <span class="n">model</span> <span class="o">=</span> <span class="n">ml</span><span class="o">.</span><span class="n">list_items</span><span class="p">(</span><span class="n">client</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">f</span><span class="s2">&quot;</span><span class="si">{projid}</span><span class="s2">/model/&quot;</span><span class="p">,</span>
+                                 <span class="n">only_folders</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">bucket_name</span><span class="o">=</span><span class="n">bucket_name</span><span class="p">)</span>
+        <span class="n">filepaths</span> <span class="o">=</span> <span class="p">[</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;Key&#39;</span><span class="p">]</span> <span class="k">for</span> <span class="n">item</span> <span class="ow">in</span> <span class="n">model</span><span class="p">[</span><span class="s1">&#39;Contents&#39;</span><span class="p">]</span>
+                  <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">item</span><span class="p">[</span><span class="s1">&#39;Key&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">))</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">]</span>
+
+
+        <span class="c1"># if model exists</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">filepaths</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">flash</span><span class="p">(</span><span class="s2">&quot;Please train a model before trying to predict.&quot;</span><span class="p">)</span>
+            <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;predict.html&#39;</span><span class="p">,</span> <span class="n">projnm</span><span class="o">=</span><span class="n">projnm</span><span class="p">,</span>
+                            <span class="n">pred_lab</span><span class="o">=</span><span class="n">prediction_labels</span><span class="p">,</span> <span class="n">form</span><span class="o">=</span><span class="n">form</span><span class="p">,</span> <span class="n">projid</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">aspect_ratio</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">aspect_ratio</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">predictions</span> <span class="o">=</span> <span class="n">predict_ml</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">,</span> <span class="n">paths</span><span class="o">=</span><span class="n">s3_filepaths</span><span class="p">,</span> <span class="n">aspect_r</span><span class="o">=</span><span class="n">aspect_ratio</span><span class="p">,</span> <span class="n">n_training_labels</span><span class="o">=</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">predictions</span><span class="p">)</span>
+            <span class="n">idx2lbls</span> <span class="o">=</span> <span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">*</span><span class="nb">len</span><span class="p">(</span><span class="n">labels</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">:</span> <span class="n">idx2lbls</span><span class="p">[</span><span class="nb">int</span><span class="p">(</span><span class="n">label</span><span class="o">.</span><span class="n">label_index</span><span class="p">)]</span> <span class="o">=</span> <span class="n">label</span><span class="o">.</span><span class="n">label_name</span>
+            <span class="n">prediction_labels</span> <span class="o">=</span> <span class="p">[</span> <span class="n">idx2lbls</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">predictions</span> <span class="p">]</span>
+            <span class="n">project_ids</span> <span class="o">=</span> <span class="p">[</span><span class="n">projid</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">prediction_labels</span><span class="p">))]</span>
+        
+            <span class="k">for</span> <span class="n">row</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">project_ids</span><span class="p">,</span> <span class="n">s3_filepaths</span><span class="p">,</span> <span class="n">prediction_labels</span><span class="p">):</span>
+                <span class="n">prediction</span><span class="p">(</span><span class="n">row</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">row</span><span class="p">[</span><span class="mi">2</span><span class="p">])</span>
+
+            <span class="n">project_predictions</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Pred_Results</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+            <span class="c1"># TODO: remove print statements after debugging</span>
+
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;predict.html&#39;</span><span class="p">,</span> <span class="n">projnm</span><span class="o">=</span><span class="n">projnm</span><span class="p">,</span>
+                           <span class="n">project_predictions</span><span class="o">=</span><span class="n">project_predictions</span><span class="p">,</span> <span class="n">form</span><span class="o">=</span><span class="n">form</span><span class="p">,</span> <span class="n">projid</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="status"><a class="viewcode-back" href="../../apiReference.html#app.routes.status">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/status/&lt;projid&gt;&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+<span class="nd">@login_required</span>
+<span class="k">def</span> <span class="nf">status</span><span class="p">(</span><span class="n">projid</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This route provides project status, </span>
+<span class="sd">    including the prediction results and users of this project.</span>
+<span class="sd">    At this route, a user can also add other users to their project,</span>
+<span class="sd">    one user at a time.</span>
+<span class="sd">    Added users will also receive an email notifying them that they are</span>
+<span class="sd">    added.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">proj</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span> \
+        <span class="o">.</span><span class="n">first</span><span class="p">()</span>
+    <span class="n">project_predictions</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Pred_Results</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+    
+    <span class="k">for</span> <span class="n">project</span> <span class="ow">in</span> <span class="n">project_predictions</span><span class="p">:</span>
+       <span class="nb">print</span><span class="p">(</span><span class="n">project</span><span class="o">.</span><span class="n">path_to_img</span><span class="p">)</span>
+    <span class="n">projnm</span> <span class="o">=</span> <span class="n">proj</span><span class="o">.</span><span class="n">project_name</span>
+    <span class="n">proj_owner</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="nb">id</span><span class="o">=</span><span class="n">proj</span><span class="o">.</span><span class="n">project_owner_id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">username</span>
+
+    <span class="n">userids_of_one_project</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User_Project</span><span class="o">.</span><span class="n">query</span> \
+        <span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+    <span class="n">users</span> <span class="o">=</span> <span class="p">[]</span>
+    <span class="k">for</span> <span class="n">user_proj</span> <span class="ow">in</span> <span class="n">userids_of_one_project</span><span class="p">:</span>
+        <span class="n">users</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span>
+            <span class="nb">id</span><span class="o">=</span><span class="n">user_proj</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">username</span><span class="p">)</span>
+
+    <span class="c1"># add user functionality</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;POST&quot;</span><span class="p">:</span>
+        <span class="n">added_username</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;username&#39;</span><span class="p">]</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">added_username</span><span class="o">.</span><span class="n">split</span><span class="p">())</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">flash</span><span class="p">(</span><span class="s2">&quot;You can only add one user at a time.&quot;</span><span class="p">)</span>
+            <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;status.html&#39;</span><span class="p">,</span> <span class="n">projnm</span><span class="o">=</span><span class="n">projnm</span><span class="p">,</span>
+                            <span class="n">users</span><span class="o">=</span><span class="n">users</span><span class="p">,</span> <span class="n">projid</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span>
+
+        <span class="n">found_users</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">added_username</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">found_users</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">flash</span><span class="p">(</span><span class="s1">&#39;User does not exist.&#39;</span><span class="p">)</span>
+            <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;status.html&#39;</span><span class="p">,</span> <span class="n">projnm</span><span class="o">=</span><span class="n">projnm</span><span class="p">,</span>
+                            <span class="n">users</span><span class="o">=</span><span class="n">users</span><span class="p">,</span> <span class="n">projid</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span>
+
+        <span class="k">elif</span> <span class="n">added_username</span> <span class="ow">in</span> <span class="n">users</span><span class="p">:</span>
+            <span class="n">flash</span><span class="p">(</span><span class="n">added_username</span> <span class="o">+</span> <span class="s1">&#39; already has access to the project.&#39;</span><span class="p">)</span>
+            <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;status.html&#39;</span><span class="p">,</span> <span class="n">projnm</span><span class="o">=</span><span class="n">projnm</span><span class="p">,</span>
+                            <span class="n">users</span><span class="o">=</span><span class="n">users</span><span class="p">,</span> <span class="n">projid</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">user</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">added_username</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+            <span class="n">user_id</span> <span class="o">=</span> <span class="n">user</span><span class="o">.</span><span class="n">id</span>
+            <span class="n">user_proj</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User_Project</span><span class="p">(</span><span class="n">user_id</span><span class="p">,</span> <span class="n">projid</span><span class="p">)</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user_proj</span><span class="p">)</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+            <span class="c1">#send notification to the added user</span>
+            <span class="n">user_email</span> <span class="o">=</span> <span class="n">user</span><span class="o">.</span><span class="n">email</span>
+            <span class="n">subject_line</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;You have been added to project </span><span class="si">{projnm}</span><span class="s2">.&quot;</span>
+            <span class="n">email_body</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;You have just been added to project </span><span class="si">{projnm}</span><span class="s2">. &quot;</span> \
+                         <span class="n">f</span><span class="s2">&quot;Now you can start uploading data, training, and predicting.&quot;</span>
+
+            <span class="n">send_notification</span><span class="p">(</span><span class="n">added_username</span><span class="p">,</span> <span class="n">user_email</span><span class="p">,</span> <span class="n">subject_line</span><span class="p">,</span> <span class="n">email_body</span><span class="p">)</span>
+
+            <span class="n">users_with_new</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">userids_with_new_of_one_project</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User_Project</span>\
+                <span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">user_proj_new</span> <span class="ow">in</span> <span class="n">userids_with_new_of_one_project</span><span class="p">:</span>
+                <span class="n">users_with_new</span><span class="o">.</span><span class="n">append</span><span class="p">(</span>
+                    <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span>
+                        <span class="nb">id</span><span class="o">=</span><span class="n">user_proj_new</span><span class="o">.</span><span class="n">user_id</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span><span class="o">.</span><span class="n">username</span>
+                <span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;status.html&#39;</span><span class="p">,</span> <span class="n">projnm</span><span class="o">=</span><span class="n">projnm</span><span class="p">,</span> <span class="n">proj_owner</span><span class="o">=</span><span class="n">proj_owner</span><span class="p">,</span>
+                           <span class="n">users</span><span class="o">=</span><span class="n">users_with_new</span><span class="p">,</span> <span class="n">projid</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">render_template</span><span class="p">(</span><span class="s1">&#39;status.html&#39;</span><span class="p">,</span> <span class="n">projnm</span><span class="o">=</span><span class="n">projnm</span><span class="p">,</span> <span class="n">proj_owner</span><span class="o">=</span><span class="n">proj_owner</span><span class="p">,</span>
+                           <span class="n">users</span><span class="o">=</span><span class="n">users</span><span class="p">,</span> <span class="n">projid</span><span class="o">=</span><span class="n">projid</span><span class="p">,</span> <span class="n">project_predictions</span><span class="o">=</span><span class="n">project_predictions</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="downloadpred"><a class="viewcode-back" href="../../apiReference.html#app.routes.downloadpred">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/downloadpred/&lt;projid&gt;&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+<span class="nd">@login_required</span>
+<span class="k">def</span> <span class="nf">downloadpred</span><span class="p">(</span><span class="n">projid</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    rename the files in tmp folder of the project</span>
+<span class="sd">    zip all the files, send to user</span>
+<span class="sd">    :param projid:</span>
+<span class="sd">    :return: send files</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">preds</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Pred_Results</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">project_id</span><span class="o">=</span><span class="n">projid</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+    <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">preds</span><span class="p">:</span>
+        <span class="n">newnm</span> <span class="o">=</span> <span class="n">p</span><span class="o">.</span><span class="n">path_to_img</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">+</span><span class="s2">&quot;_&quot;</span><span class="o">+</span><span class="n">p</span><span class="o">.</span><span class="n">label</span><span class="o">+</span><span class="s2">&quot;_&quot;</span><span class="o">+</span><span class="n">p</span><span class="o">.</span><span class="n">path_to_img</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">os</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="n">p</span><span class="o">.</span><span class="n">path_to_img</span><span class="p">,</span> <span class="n">newnm</span><span class="p">)</span>
+        <span class="c1"># suppose the path in db is absolute</span>
+    <span class="n">projfoder</span> <span class="o">=</span> <span class="s1">&#39;/&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">preds</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">path_to_img</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;/&#39;</span><span class="p">)[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+    <span class="n">shutil</span><span class="o">.</span><span class="n">make_archive</span><span class="p">(</span><span class="n">projfoder</span><span class="p">,</span> <span class="s1">&#39;zip&#39;</span><span class="p">,</span> <span class="n">projfoder</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">send_file</span><span class="p">(</span><span class="n">projfoder</span><span class="o">+</span><span class="s2">&quot;.zip&quot;</span><span class="p">,</span> <span class="n">as_attachment</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+                     <span class="n">attachment_filename</span><span class="o">=</span><span class="nb">str</span><span class="p">(</span><span class="n">projid</span><span class="p">)</span><span class="o">+</span><span class="s2">&quot;.zip&quot;</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="logout"><a class="viewcode-back" href="../../apiReference.html#app.routes.logout">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/logout&#39;</span><span class="p">)</span>
+<span class="nd">@login_required</span>
+<span class="k">def</span> <span class="nf">logout</span><span class="p">():</span>
+    <span class="n">logout_user</span><span class="p">()</span>
+    <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s1">&#39;index&#39;</span><span class="p">))</span></div>
+
+
+<div class="viewcode-block" id="unauthorized"><a class="viewcode-back" href="../../apiReference.html#app.routes.unauthorized">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">errorhandler</span><span class="p">(</span><span class="mi">401</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">unauthorized</span><span class="p">(</span><span class="n">e</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;If user goes to a page that requires authorization such as</span>
+<span class="sd">    projects page but is not yet logged in, redirect them to</span>
+<span class="sd">    the log-in page.&quot;&quot;&quot;</span>
+    <span class="k">return</span> <span class="n">redirect</span><span class="p">(</span><span class="n">url_for</span><span class="p">(</span><span class="s1">&#39;signin&#39;</span><span class="p">))</span></div>
+
+
+<span class="c1"># Mobile app backend ##############</span>
+
+
+<div class="viewcode-block" id="mobile_register"><a class="viewcode-back" href="../../apiReference.html#app.routes.mobile_register">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/mobile_register&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">mobile_register</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This function uses method post to register user information</span>
+<span class="sd">    in the data base. This returns a message indicating the if</span>
+<span class="sd">    the procedure has been successful or not.</span>
+
+<span class="sd">    :return: return dictionary with success &quot;1&quot;/&quot;0&quot; if success/failure</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s2">&quot;POST&quot;</span><span class="p">:</span>
+        <span class="n">username</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;username&#39;</span><span class="p">]</span>
+        <span class="n">companyname</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;companyname&#39;</span><span class="p">]</span>
+        <span class="n">email</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;email&#39;</span><span class="p">]</span>
+        <span class="n">password</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;password&#39;</span><span class="p">]</span>
+
+        <span class="n">user_count</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">username</span><span class="o">=</span><span class="n">username</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span> \
+            <span class="o">+</span> <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="n">email</span><span class="p">)</span><span class="o">.</span><span class="n">count</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">user_count</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">user</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="p">(</span><span class="n">username</span><span class="p">,</span> <span class="n">email</span><span class="p">,</span> <span class="n">companyname</span><span class="p">,</span> <span class="n">password</span><span class="p">)</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+            <span class="c1"># return &quot;1&quot; #</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">})</span>
+
+    <span class="c1"># return &quot;0&quot;</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="mobile_signin"><a class="viewcode-back" href="../../apiReference.html#app.routes.mobile_signin">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/mobile_signin&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+<span class="k">def</span> <span class="nf">mobile_signin</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Mobile version of signin</span>
+<span class="sd">    This function uses method post to take user-input data and check if exists</span>
+<span class="sd">    and the credentials are correct.</span>
+
+<span class="sd">    :return: return dictionary with success &quot;1&quot;/&quot;0&quot; if success/failure</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;POST&#39;</span><span class="p">:</span>
+        <span class="n">email</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;email&#39;</span><span class="p">]</span>
+        <span class="n">password</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;password&#39;</span><span class="p">]</span>
+        <span class="n">user</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">email</span><span class="o">=</span><span class="n">email</span><span class="p">)</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">user</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="n">user</span><span class="o">.</span><span class="n">check_password</span><span class="p">(</span><span class="n">password</span><span class="p">):</span>
+            <span class="n">login_user</span><span class="p">(</span><span class="n">user</span><span class="p">)</span>
+            <span class="c1"># return &quot;1&quot;</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">})</span>
+
+    <span class="c1"># return &quot;0&quot;</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">})</span></div>
+
+
+<div class="viewcode-block" id="mobile_projects"><a class="viewcode-back" href="../../apiReference.html#app.routes.mobile_projects">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/mobile_projects&#39;</span><span class="p">,</span> <span class="n">methods</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;GET&#39;</span><span class="p">,</span> <span class="s1">&#39;POST&#39;</span><span class="p">])</span>
+<span class="nd">@login_required</span>
+<span class="k">def</span> <span class="nf">mobile_projects</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    This route is the backend for the project menu of a</span>
+<span class="sd">    given user in the mobile phone.</span>
+<span class="sd">    It allows for projects to be added.</span>
+<span class="sd">    If a project using the same project_name already exists,</span>
+<span class="sd">    this will display an error to tell the user</span>
+<span class="sd">    to pick another project name.</span>
+
+<span class="sd">    :return: return dictionary with success &quot;1&quot;/&quot;0&quot; if success/failure and the list of projects</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;GET&#39;</span><span class="p">:</span>
+        <span class="n">projects</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User_Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span>
+            <span class="n">user_id</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span><span class="n">current_user</span><span class="o">.</span><span class="n">id</span><span class="p">))</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+        <span class="c1"># return objects to easily call by attribute names,</span>
+        <span class="c1"># rather than by indexes, please keep</span>
+        <span class="n">proj_labs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">proj</span> <span class="ow">in</span> <span class="n">projects</span><span class="p">:</span>
+            <span class="n">proj_labs</span><span class="p">[</span><span class="n">proj</span><span class="o">.</span><span class="n">project_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span>
+                <span class="n">project_id</span><span class="o">=</span><span class="n">proj</span><span class="o">.</span><span class="n">project_id</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+        <span class="c1"># use dictionary to easily call by key which matches the ids,</span>
+        <span class="c1"># more secure than by indexes, please keep</span>
+
+        <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+            <span class="p">{</span><span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;projects&quot;</span><span class="p">:</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">projects</span><span class="p">),</span>
+             <span class="s2">&quot;proj_labs&quot;</span><span class="p">:</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">proj_labs</span><span class="p">)})</span>
+    <span class="k">elif</span> <span class="n">request</span><span class="o">.</span><span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;POST&#39;</span><span class="p">:</span>
+        <span class="n">project_name</span> <span class="o">=</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;project_name&#39;</span><span class="p">]</span>
+        <span class="n">labels</span> <span class="o">=</span> <span class="p">[</span><span class="n">label</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">request</span><span class="o">.</span><span class="n">form</span><span class="p">[</span><span class="s1">&#39;labels&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">)]</span>
+
+        <span class="c1"># query the Project table to see if the project already exists</span>
+        <span class="c1"># if it does, tell the user to pick another project_name</span>
+        <span class="n">projects_with_same_name</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User_Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span>
+            <span class="n">project_name</span><span class="o">=</span><span class="n">project_name</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">projects_with_same_name</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="s2">&quot;0&quot;</span><span class="p">})</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># insert into the Project table</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="p">(</span><span class="n">project_name</span><span class="p">,</span> <span class="nb">int</span><span class="p">(</span><span class="n">current_user</span><span class="o">.</span><span class="n">id</span><span class="p">)))</span>
+
+            <span class="c1"># get the project for the current user that was just added</span>
+            <span class="c1"># (by using the creation date)</span>
+            <span class="n">most_recent_project</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span>
+                <span class="n">project_owner_id</span><span class="o">=</span><span class="n">current_user</span><span class="o">.</span><span class="n">id</span><span class="p">)</span> \
+                <span class="o">.</span><span class="n">order_by</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">Project</span><span class="o">.</span><span class="n">project_creation_date</span><span class="o">.</span><span class="n">desc</span><span class="p">())</span><span class="o">.</span><span class="n">first</span><span class="p">()</span>
+
+            <span class="c1"># insert into the User_Project table so that the</span>
+            <span class="c1"># user is associated with a project</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">User_Project</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">current_user</span><span class="o">.</span><span class="n">id</span><span class="p">),</span>
+                                                <span class="n">most_recent_project</span><span class="o">.</span><span class="n">project_id</span><span class="p">,</span>
+                                                <span class="n">project_name</span><span class="p">))</span>
+
+            <span class="k">for</span> <span class="n">label</span> <span class="ow">in</span> <span class="n">labels</span><span class="p">:</span>
+                <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="p">(</span><span class="n">most_recent_project</span><span class="o">.</span><span class="n">project_id</span><span class="p">,</span>
+                                             <span class="n">label</span><span class="p">))</span>
+
+            <span class="c1"># pass the list of projects (including the new project)</span>
+            <span class="c1"># to the page so it can be shown to the user</span>
+            <span class="c1"># only commit the transactions once everything</span>
+            <span class="c1"># has been entered successfully.</span>
+            <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+            <span class="n">projects</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">User_Project</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span><span class="n">user_id</span><span class="o">=</span><span class="nb">int</span><span class="p">(</span>
+                <span class="n">current_user</span><span class="o">.</span><span class="n">id</span><span class="p">))</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+            <span class="n">proj_labs</span> <span class="o">=</span> <span class="p">{}</span>
+            <span class="k">for</span> <span class="n">proj</span> <span class="ow">in</span> <span class="n">projects</span><span class="p">:</span>
+                <span class="n">proj_labs</span><span class="p">[</span><span class="n">proj</span><span class="o">.</span><span class="n">project_id</span><span class="p">]</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Label</span><span class="o">.</span><span class="n">query</span><span class="o">.</span><span class="n">filter_by</span><span class="p">(</span>
+                    <span class="n">project_id</span><span class="o">=</span><span class="n">proj</span><span class="o">.</span><span class="n">project_id</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">()</span>
+
+            <span class="c1"># return render_template(&#39;projects.html&#39;,</span>
+            <span class="c1"># projects=projects, proj_labs=proj_labs)</span>
+            <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span>
+                <span class="p">{</span><span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">,</span> <span class="s2">&quot;projects&quot;</span><span class="p">:</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">projects</span><span class="p">),</span>
+                 <span class="s2">&quot;proj_labs&quot;</span><span class="p">:</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">(</span><span class="n">proj_labs</span><span class="p">)})</span></div>
+
+
+<div class="viewcode-block" id="mobile_logout"><a class="viewcode-back" href="../../apiReference.html#app.routes.mobile_logout">[docs]</a><span class="nd">@application</span><span class="o">.</span><span class="n">route</span><span class="p">(</span><span class="s1">&#39;/mobile_logout&#39;</span><span class="p">)</span>
+<span class="nd">@login_required</span>
+<span class="k">def</span> <span class="nf">mobile_logout</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Log out function for mobile phone</span>
+<span class="sd">    :return: return dictionary with success &quot;1&quot;/&quot;0&quot; if success/failure</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">logout_user</span><span class="p">()</span>
+    <span class="c1"># flash(&#39;You have been logged out.&#39;)</span>
+    <span class="c1"># return &quot;1&quot;</span>
+    <span class="k">return</span> <span class="n">json</span><span class="o">.</span><span class="n">dumps</span><span class="p">({</span><span class="s2">&quot;success&quot;</span><span class="p">:</span> <span class="s2">&quot;1&quot;</span><span class="p">})</span></div>
+
+<span class="c1"># TODO: mobile_upload</span>
+
+<div class="viewcode-block" id="prediction"><a class="viewcode-back" href="../../apiReference.html#app.routes.prediction">[docs]</a><span class="k">def</span> <span class="nf">prediction</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">path_to_img</span><span class="p">,</span> <span class="n">label</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Record the predicted result and their path</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">pred_results</span> <span class="o">=</span> <span class="n">classes</span><span class="o">.</span><span class="n">Pred_Results</span><span class="p">(</span><span class="n">project_id</span><span class="p">,</span> <span class="n">path_to_img</span><span class="p">,</span> <span class="n">label</span><span class="p">)</span>
+    <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="n">pred_results</span><span class="p">)</span>
+    <span class="n">db</span><span class="o">.</span><span class="n">session</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span></div>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">DeepVision</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../authors.html">Authors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../apiReference.html">Code Documentation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Miguel Romero, Robert Sandor, Hai Vu Le, Meng-Ting Chang, Zhi Li, Liying Li, Wenkun Xiao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

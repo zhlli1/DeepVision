@@ -1,0 +1,301 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>deploy_script &#8212; DeepVision  documentation</title>
+    <link rel="stylesheet" href="../_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="../" src="../_static/documentation_options.js"></script>
+    <script type="text/javascript" src="../_static/jquery.js"></script>
+    <script type="text/javascript" src="../_static/underscore.js"></script>
+    <script type="text/javascript" src="../_static/doctools.js"></script>
+    <script type="text/javascript" src="../_static/language_data.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for deploy_script</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">paramiko</span>
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">from</span> <span class="nn">os.path</span> <span class="k">import</span> <span class="n">expanduser</span>
+<span class="kn">from</span> <span class="nn">user_definition</span> <span class="k">import</span> <span class="o">*</span>
+
+<span class="n">ENVIRONMENT_PATH</span><span class="o">=</span><span class="s1">&#39;/opt/conda/envs/deepVision&#39;</span>
+
+<div class="viewcode-block" id="ssh_client"><a class="viewcode-back" href="../apiReference.html#deploy_script.ssh_client">[docs]</a><span class="k">def</span> <span class="nf">ssh_client</span><span class="p">():</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Return ssh client object</span>
+
+<span class="sd">    :return: paramiko.SShClient()</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="k">return</span> <span class="n">paramiko</span><span class="o">.</span><span class="n">SSHClient</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="ssh_connection"><a class="viewcode-back" href="../apiReference.html#deploy_script.ssh_connection">[docs]</a><span class="k">def</span> <span class="nf">ssh_connection</span><span class="p">(</span><span class="n">ssh</span><span class="p">,</span> <span class="n">ec2_address</span><span class="p">,</span> <span class="n">user</span><span class="p">,</span> <span class="n">key_file</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Establish an ssh connection.</span>
+
+<span class="sd">    :param ssh: paramiko.SSHClient class</span>
+<span class="sd">    :param ec2_address: (str) ec2 instance address</span>
+<span class="sd">    :param user: (str) ssh username</span>
+<span class="sd">    :param key_file: (str) location of the AWS</span>
+<span class="sd">                     key from the root directory</span>
+<span class="sd">    :return: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ssh</span><span class="o">.</span><span class="n">set_missing_host_key_policy</span><span class="p">(</span><span class="n">paramiko</span><span class="o">.</span><span class="n">AutoAddPolicy</span><span class="p">())</span>
+    <span class="n">ssh</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span><span class="n">ec2_address</span><span class="p">,</span> <span class="n">username</span><span class="o">=</span><span class="n">user</span><span class="p">,</span> <span class="n">key_filename</span><span class="o">=</span> <span class="n">key_file</span><span class="p">)</span>
+                <span class="c1"># key_filename=expanduser(&quot;~&quot;) + key_file)</span>
+    <span class="k">return</span> <span class="n">ssh</span></div>
+
+
+<div class="viewcode-block" id="git_clone_pull"><a class="viewcode-back" href="../apiReference.html#deploy_script.git_clone_pull">[docs]</a><span class="k">def</span> <span class="nf">git_clone_pull</span><span class="p">(</span><span class="n">ssh</span><span class="p">,</span> <span class="n">git_user_id</span><span class="p">,</span> <span class="n">git_repo_name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Clone/Updates &#39;git_repo_name&#39; repository.</span>
+
+<span class="sd">    :param ssh: paramiko.SSHClient class</span>
+<span class="sd">    :return: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">ssh</span><span class="o">.</span><span class="n">exec_command</span><span class="p">(</span><span class="s2">&quot;git --version&quot;</span><span class="p">)</span>
+
+    <span class="n">git_user</span> <span class="o">=</span> <span class="n">git_credentials</span><span class="p">()</span>
+
+    <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">ssh</span><span class="o">.</span><span class="n">exec_command</span><span class="p">(</span><span class="s2">&quot;git config &quot;</span> <span class="o">+</span>
+                                             <span class="s2">&quot;--global &quot;</span> <span class="o">+</span>
+                                             <span class="s2">&quot;credential.helper store&quot;</span><span class="p">)</span>
+
+
+
+    <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">ssh</span><span class="o">.</span><span class="n">exec_command</span><span class="p">(</span><span class="s1">&#39;cd &#39;</span> <span class="o">+</span> <span class="n">git_repo_name</span><span class="p">)</span>
+
+    <span class="c1"># Try cloning the repo</span>
+    <span class="k">if</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span> <span class="o">==</span> <span class="n">stderr</span><span class="o">.</span><span class="n">read</span><span class="p">():</span>
+
+        <span class="n">git_pull_command</span> <span class="o">=</span> <span class="s2">&quot;cd &quot;</span> <span class="o">+</span> <span class="n">git_repo_name</span> <span class="o">+</span> <span class="s2">&quot; ; git stash; git pull&quot;</span>
+        <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">ssh</span><span class="o">.</span><span class="n">exec_command</span><span class="p">(</span><span class="n">git_pull_command</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="n">stdout</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">stderr</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">git_clone_command</span> <span class="o">=</span> <span class="s2">&quot;git clone https://&quot;</span> <span class="o">+</span> <span class="n">git_user</span> <span class="o">+</span>\
+                            <span class="s2">&quot;@github.com/&quot;</span> <span class="o">+</span> \
+                            <span class="n">git_user_id</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="n">git_repo_name</span> <span class="o">+</span> <span class="s2">&quot;.git&quot;</span>
+
+        <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">ssh</span><span class="o">.</span><span class="n">exec_command</span><span class="p">(</span><span class="n">git_clone_command</span><span class="p">)</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">stdout</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">stderr</span><span class="o">.</span><span class="n">read</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="create_or_update_environment"><a class="viewcode-back" href="../apiReference.html#deploy_script.create_or_update_environment">[docs]</a><span class="k">def</span> <span class="nf">create_or_update_environment</span><span class="p">(</span><span class="n">ssh</span><span class="p">,</span> <span class="n">git_repo_name</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Creates/update python environment with the repo&#39;s .yaml file.</span>
+
+<span class="sd">    :param ssh: paramiko.SSHClient class</span>
+<span class="sd">    :return: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">ssh</span><span class="o">.</span><span class="n">exec_command</span><span class="p">(</span><span class="n">f</span><span class="s2">&quot;cd </span><span class="si">{ENVIRONMENT_PATH}</span><span class="s2">&quot;</span><span class="p">)</span>
+
+    <span class="c1"># Try cloning the repo</span>
+    <span class="k">if</span> <span class="sa">b</span><span class="s2">&quot;&quot;</span> <span class="o">!=</span> <span class="n">stderr</span><span class="o">.</span><span class="n">read</span><span class="p">():</span>
+        <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">ssh</span><span class="o">.</span><span class="n">exec_command</span><span class="p">(</span><span class="s2">&quot;conda env create -f &quot;</span>\
+        <span class="o">+</span> <span class="s2">&quot;~/&quot;</span> <span class="o">+</span> <span class="n">git_repo_name</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="s2">&quot;environment.yml&quot;</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="n">stdout</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">stderr</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+
+ 
+    <span class="k">else</span><span class="p">:</span>
+        <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Updating environment...&#39;</span><span class="p">)</span>
+        <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">ssh</span><span class="o">.</span><span class="n">exec_command</span><span class="p">(</span><span class="s2">&quot;conda env update &quot;</span>\
+        <span class="o">+</span> <span class="s2">&quot;-f ~/&quot;</span> <span class="o">+</span> <span class="n">git_repo_name</span> <span class="o">+</span> <span class="s2">&quot;/&quot;</span> <span class="o">+</span> <span class="s2">&quot;environment.yml&quot;</span><span class="p">)</span>
+
+        <span class="nb">print</span><span class="p">(</span><span class="n">stdout</span><span class="o">.</span><span class="n">read</span><span class="p">())</span>
+        <span class="nb">print</span><span class="p">(</span><span class="n">stderr</span><span class="o">.</span><span class="n">read</span><span class="p">())</span></div>
+
+
+<div class="viewcode-block" id="get_port"><a class="viewcode-back" href="../apiReference.html#deploy_script.get_port">[docs]</a><span class="k">def</span> <span class="nf">get_port</span><span class="p">(</span><span class="n">ssh</span><span class="p">,</span> <span class="n">server_path</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+
+<span class="sd">    :param ssh: paramiko.SSHClient class</span>
+<span class="sd">    :param server_path: path to the application directory (where ``.flaskenv`` is located)</span>
+<span class="sd">    :return: (str) port number</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+    <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">ssh</span><span class="o">.</span><span class="n">exec_command</span><span class="p">(</span><span class="s2">&quot;cat &quot;</span> <span class="o">+</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">server_path</span><span class="p">,</span><span class="s1">&#39;.flaskenv&#39;</span><span class="p">))</span>
+
+    <span class="c1"># print(stdout.read().decode(&quot;utf-8&quot;).split(&#39;\n&#39;))</span>
+    <span class="c1"># print(&#39;This is the output&#39;)</span>
+    <span class="c1"># print(stdout.read().decode(&quot;utf-8&quot;).split(&#39;=&#39;)[-1])</span>
+    <span class="c1"># print(stderr.read())</span>
+
+    <span class="n">info</span> <span class="o">=</span> <span class="n">stdout</span><span class="o">.</span><span class="n">read</span><span class="p">()</span><span class="o">.</span><span class="n">decode</span><span class="p">(</span><span class="s2">&quot;utf-8&quot;</span><span class="p">)</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;=&#39;</span><span class="p">)[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+    <span class="c1"># for line in stdout.read().split(b&#39;\n&#39;):</span>
+    <span class="c1">#     # print(line)</span>
+    <span class="c1">#     if &#39;FLASK_RUN_PORT&#39; in line.decode(&quot;utf-8&quot;): info = line.decode(&quot;utf-8&quot;); break</span>
+
+    <span class="c1"># return info.split(&#39;=&#39;)[1]</span>
+    <span class="k">return</span>  <span class="n">info</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span></div>
+
+<div class="viewcode-block" id="print_port"><a class="viewcode-back" href="../apiReference.html#deploy_script.print_port">[docs]</a><span class="k">def</span> <span class="nf">print_port</span><span class="p">(</span><span class="n">ssh</span><span class="p">,</span> <span class="n">server_path</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Prints the port number in which the app runs according to the .flaskenv file.</span>
+
+<span class="sd">    :param ssh: paramiko ssh client (connected)</span>
+<span class="sd">    :param server_path: path to the application directory (where ``.flaskenv`` is located)</span>
+<span class="sd">    :return: None</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="n">port</span> <span class="o">=</span> <span class="n">get_port</span><span class="p">(</span><span class="n">ssh</span><span class="p">,</span> <span class="n">server_path</span><span class="p">)</span>
+
+    <span class="nb">print</span><span class="p">(</span><span class="s2">&quot;App running in port number &quot;</span> <span class="o">+</span> <span class="n">port</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="launch_application"><a class="viewcode-back" href="../apiReference.html#deploy_script.launch_application">[docs]</a><span class="k">def</span> <span class="nf">launch_application</span><span class="p">(</span><span class="n">ssh</span><span class="p">,</span> <span class="n">server_path</span><span class="o">=</span><span class="s1">&#39;~/&#39;</span> <span class="o">+</span> <span class="n">git_repo_name</span> <span class="o">+</span> <span class="s1">&#39;/code&#39;</span><span class="p">):</span>
+    <span class="sd">&#39;&#39;&#39;</span>
+<span class="sd">    Launch application server_path under the deepVision environment and print port.</span>
+
+<span class="sd">    :param ssh: paramiko ssh.Client (already connected)</span>
+<span class="sd">    :param server_path: path to directory where run_app.py is located.</span>
+<span class="sd">    :return: None</span>
+<span class="sd">    &#39;&#39;&#39;</span>
+
+    <span class="c1"># kill any process running from the app if any</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="s2">&quot;kill -9 `ps aux |grep gunicorn |grep app | awk &#39;{ print $2 }&#39;` &quot;</span>
+    <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">ssh</span><span class="o">.</span><span class="n">exec_command</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+
+    <span class="n">port</span> <span class="o">=</span> <span class="n">get_port</span><span class="p">(</span><span class="n">ssh</span><span class="p">,</span> <span class="n">server_path</span><span class="p">)</span>
+
+    <span class="c1"># run the server with the last version</span>
+    <span class="n">command</span> <span class="o">=</span> <span class="n">f</span><span class="s2">&quot;</span><span class="si">{ENVIRONMENT_PATH}</span><span class="s2">/bin/gunicorn -D -b :</span><span class="si">{port}</span><span class="s2"> -w 20 --timeout 10000 --chdir product-analytics-group-project-deepvision/code/ app:application&quot;</span>
+
+    <span class="n">stdin</span><span class="p">,</span> <span class="n">stdout</span><span class="p">,</span> <span class="n">stderr</span> <span class="o">=</span> <span class="n">ssh</span><span class="o">.</span><span class="n">exec_command</span><span class="p">(</span><span class="n">command</span><span class="p">)</span>
+
+    <span class="c1"># print(stdout.read())</span>
+    <span class="c1"># print(stderr.read())</span>
+
+    <span class="n">print_port</span><span class="p">(</span><span class="n">ssh</span><span class="p">,</span> <span class="n">server_path</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="close"><a class="viewcode-back" href="../apiReference.html#deploy_script.close">[docs]</a><span class="k">def</span> <span class="nf">close</span><span class="p">(</span><span class="n">ssh</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Closes the SSH connection.</span>
+
+<span class="sd">    :param ssh: paramiko.SSHClient class</span>
+<span class="sd">    :return: None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">ssh</span><span class="o">.</span><span class="n">close</span><span class="p">()</span></div>
+
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../apiReference.html#deploy_script.main">[docs]</a><span class="k">def</span> <span class="nf">main</span><span class="p">():</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Main function.</span>
+
+<span class="sd">    :return:  None</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="n">ssh</span> <span class="o">=</span> <span class="n">ssh_client</span><span class="p">()</span>
+    <span class="n">ssh_connection</span><span class="p">(</span><span class="n">ssh</span><span class="p">,</span> <span class="n">ec2_address</span><span class="p">,</span> <span class="n">user</span><span class="p">,</span> <span class="n">key_file</span><span class="p">)</span>
+    <span class="n">git_clone_pull</span><span class="p">(</span><span class="n">ssh</span><span class="p">,</span> <span class="n">git_user_id</span><span class="p">,</span> <span class="n">git_repo_name</span><span class="p">)</span>
+    <span class="n">create_or_update_environment</span><span class="p">(</span><span class="n">ssh</span><span class="p">,</span> <span class="n">git_repo_name</span><span class="p">)</span>
+    <span class="c1"># set_crontab(ssh)</span>
+    <span class="n">launch_application</span><span class="p">(</span><span class="n">ssh</span><span class="p">)</span>
+    <span class="n">close</span><span class="p">(</span><span class="n">ssh</span><span class="p">)</span></div>
+
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="n">main</span><span class="p">()</span>
+
+<span class="c1">#</span>
+<span class="c1"># .conda/envs/deepVision/bin/gunicorn -b :8080 --chdir product-analytics-group-project-deepvision/code/ app:application</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">DeepVision</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../authors.html">Authors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../requirements.html">Requirements</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../tutorial.html">Tutorial</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../apiReference.html">Code Documentation</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Miguel Romero, Robert Sandor, Hai Vu Le, Meng-Ting Chang, Zhi Li, Liying Li, Wenkun Xiao.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.5</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>
